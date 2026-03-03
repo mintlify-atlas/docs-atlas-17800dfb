@@ -1,0 +1,385 @@
+---
+title: "Database Schema"
+description: "Complete reference for Stampchain's database tables, relationships, and fields using Supabase"
+---
+
+## Overview
+
+Stampchain uses **Supabase** (PostgreSQL) as its database with two connection methods:
+- **Supabase Client**: For real-time features and row-level security
+- **Postgres Client**: Direct SQL access via connection string
+
+## Database Configuration
+
+### Supabase Connection
+
+```typescript
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+export const createClient = () => {
+  const cookieStore = cookies();
+  return createServerClient(
+    supabaseUrl!,
+    supabaseKey!,
+    {
+      cookies: {
+        async getAll() {
+          return (await cookieStore).getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(async ({ name, value, options }) => 
+              (await cookieStore).set(name, value, options)
+            )
+          } catch {
+            // Ignored in Server Components
+          }
+        },
+      },
+    },
+  );
+};
+```
+
+### Direct Postgres Connection
+
+```typescript
+import postgres from 'postgres'
+
+const connectionString = process.env.DATABASE_URL!
+const sql = postgres(connectionString)
+
+export default sql
+```
+
+## Required Environment Variables
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+
+# Direct Database Access
+DATABASE_URL=postgresql://user:password@host:5432/database
+```
+
+## Database Tables
+
+### users
+
+Stores user account information and their server-side Solana wallet credentials.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `email` | `string` (Primary Key) | User's email address from Google OAuth |
+| `server_wallet` | `string` | Public key of the user's server wallet (base58) |
+| `server_key` | `Uint8Array / number[]` | Secret key for the server wallet (stored as byte array) |
+| `created_at` | `timestamp` | Account creation timestamp |
+
+**Example Query:**
+
+```typescript
+const { data, error } = await supabase
+  .from('users')
+  .select('server_wallet, server_key')
+  .eq('email', 'user@example.com')
+  .maybeSingle()
+```
+
+<Warning>
+The `server_key` field contains sensitive cryptographic material. Ensure proper encryption and access controls are in place.
+</Warning>
+
+### token_mints
+
+Stores information about loyalty token campaigns created by users.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `uuid` (Primary Key) | Unique identifier for the campaign |
+| `mint_address` | `string` | Solana public key of the token mint |
+| `mint_secret_key` | `number[]` | Secret key of the mint authority (byte array) |
+| `creator_email` | `string` (Foreign Key) | Email of the user who created this campaign |
+| `name` | `string` | Token display name |
+| `symbol` | `string` | Token ticker symbol |
+| `description` | `string` | Token description |
+| `decimals` | `number` | Number of decimal places (0-9) |
+| `initial_supply` | `number` | Total supply of tokens minted |
+| `maxclaimsperwallet` | `number` | Maximum claims allowed per wallet |
+| `tokensperclaim` | `number` | Number of tokens distributed per claim |
+| `created_at` | `timestamp` | Campaign creation timestamp |
+
+**Relationships:**
+- `creator_email` → `users.email`
+
+**Example Insert:**
+
+```typescript
+const { data, error } = await supabase
+  .from('token_mints')
+  .insert({
+    mint_address: mintAuthority.publicKey.toBase58(),
+    mint_secret_key: Array.from(mintAuthority.secretKey),
+    creator_email: session.user?.email,
+    decimals: decimals,
+    name: name,
+    description: description,
+    symbol: tokenSymbol,
+    initial_supply: totalSupply,
+    maxclaimsperwallet: maxClaimsPerWallet,
+    tokensperclaim: tokensPerClaim
+  })
+  .select('id')
+  .maybeSingle()
+```
+
+**Example Query:**
+
+```typescript
+const { data, error } = await supabase
+  .from('token_mints')
+  .select('id, name, symbol')
+  .eq('creator_email', email)
+```
+
+### qr_codes
+
+Stores QR codes generated for loyalty token distribution.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `uuid` (Primary Key) | Unique identifier for the QR code |
+| `campaign_id` | `uuid` (Foreign Key) | Reference to the associated token campaign |
+| `unique_code` | `string` (Unique) | UUID-based unique code for the QR |
+| `used` | `boolean` | Whether this QR code has been claimed |
+| `claimed_at` | `timestamp` (Nullable) | When the QR code was claimed |
+| `created_at` | `timestamp` | QR code creation timestamp |
+
+**Relationships:**
+- `campaign_id` → `token_mints.id`
+
+**Example Insert (Batch):**
+
+```typescript
+import { v4 as uuidv4 } from "uuid";
+
+const codes = Array.from({ length: qrCount }, () => ({
+  campaign_id: campaignId,
+  unique_code: uuidv4(),
+  used: false
+}));
+
+const { error } = await supabase
+  .from("qr_codes")
+  .insert(codes);
+```
+
+**Example Query:**
+
+```typescript
+// Get all QR codes for a campaign
+const { data, error } = await supabase
+  .from('qr_codes')
+  .select('*')
+  .eq('campaign_id', campaignId)
+
+// Check if QR code is valid and unused
+const { data, error } = await supabase
+  .from('qr_codes')
+  .select('*')
+  .eq('unique_code', token)
+  .maybeSingle()
+
+if (data?.used) {
+  // QR code already claimed
+}
+```
+
+**Example Update:**
+
+```typescript
+// Mark QR code as used
+const { error } = await supabase
+  .from('qr_codes')
+  .update({ 
+    used: true, 
+    claimed_at: new Date().toISOString() 
+  })
+  .eq('unique_code', token)
+```
+
+## Entity Relationship Diagram
+
+```
+┌─────────────────┐
+│     users       │
+├─────────────────┤
+│ email (PK)      │───┐
+│ server_wallet   │   │
+│ server_key      │   │
+│ created_at      │   │
+└─────────────────┘   │
+                      │
+                      │ 1:N
+                      │
+┌─────────────────────▼─────┐
+│     token_mints            │
+├────────────────────────────┤
+│ id (PK)                    │───┐
+│ mint_address               │   │
+│ mint_secret_key            │   │
+│ creator_email (FK)         │   │
+│ name                       │   │
+│ symbol                     │   │
+│ description                │   │
+│ decimals                   │   │
+│ initial_supply             │   │
+│ maxclaimsperwallet         │   │
+│ tokensperclaim             │   │
+│ created_at                 │   │
+└────────────────────────────┘   │
+                                 │ 1:N
+                                 │
+┌────────────────────────────────▼──┐
+│          qr_codes                 │
+├───────────────────────────────────┤
+│ id (PK)                           │
+│ campaign_id (FK)                  │
+│ unique_code (UNIQUE)              │
+│ used                              │
+│ claimed_at                        │
+│ created_at                        │
+└───────────────────────────────────┘
+```
+
+## Common Query Patterns
+
+### Get User with Wallet
+
+```typescript
+const { data, error } = await supabase
+  .from('users')
+  .select('server_wallet')
+  .eq('email', email)
+  .maybeSingle()
+```
+
+### Get All Campaigns for User
+
+```typescript
+const { data, error } = await supabase
+  .from('token_mints')
+  .select('id, name, symbol')
+  .eq('creator_email', email)
+```
+
+### Get Campaign Details with QR Codes
+
+```typescript
+const { data, error } = await supabase
+  .from('token_mints')
+  .select(`
+    *,
+    qr_codes (*)
+  `)
+  .eq('id', campaignId)
+  .single()
+```
+
+### Count Used vs Unused QR Codes
+
+```typescript
+const { data: usedCodes } = await supabase
+  .from('qr_codes')
+  .select('*', { count: 'exact' })
+  .eq('campaign_id', campaignId)
+  .eq('used', true)
+
+const { data: unusedCodes } = await supabase
+  .from('qr_codes')
+  .select('*', { count: 'exact' })
+  .eq('campaign_id', campaignId)
+  .eq('used', false)
+```
+
+## Data Types
+
+### TypeScript Interfaces
+
+```typescript
+interface User {
+  email: string;
+  server_wallet: string;
+  server_key: Uint8Array;
+  created_at: Date;
+}
+
+interface TokenMint {
+  id: string;
+  mint_address: string;
+  mint_secret_key: number[];
+  creator_email: string;
+  name: string;
+  symbol: string;
+  description: string;
+  decimals: number;
+  initial_supply: number;
+  maxclaimsperwallet: number;
+  tokensperclaim: number;
+  created_at: Date;
+}
+
+interface QRCode {
+  id: string;
+  campaign_id: string;
+  unique_code: string;
+  used: boolean;
+  claimed_at: Date | null;
+  created_at: Date;
+}
+```
+
+## Best Practices
+
+<Note>
+**Query Optimization**
+- Use `.maybeSingle()` when expecting 0 or 1 results
+- Use `.single()` when exactly 1 result is required
+- Use select filters to reduce payload size
+- Create indexes on frequently queried columns (`email`, `campaign_id`, `unique_code`)
+</Note>
+
+<Warning>
+**Security Considerations**
+- Implement Row Level Security (RLS) policies in Supabase
+- Never expose secret keys in API responses
+- Validate user ownership before allowing campaign modifications
+- Use parameterized queries to prevent SQL injection
+- Encrypt sensitive fields at rest
+</Warning>
+
+## Migration Considerations
+
+When setting up the database, ensure:
+
+1. **Foreign Key Constraints**: Properly defined relationships between tables
+2. **Indexes**: Create indexes on:
+   - `users.email`
+   - `token_mints.creator_email`
+   - `qr_codes.campaign_id`
+   - `qr_codes.unique_code`
+3. **Unique Constraints**: 
+   - `users.email` (primary key)
+   - `qr_codes.unique_code` (unique)
+4. **Default Values**:
+   - `qr_codes.used` defaults to `false`
+   - Timestamp fields use `now()` as default
+
+## Next Steps
+
+- [Authentication](/integration/authentication) - Learn about user authentication
+- [Wallet Setup](/integration/wallet-setup) - Understand server wallet management

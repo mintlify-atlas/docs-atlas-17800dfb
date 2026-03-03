@@ -1,0 +1,371 @@
+---
+title: "Tokens"
+description: "Understanding Solana SPL tokens, metadata, decimals, and supply management"
+---
+
+## Overview
+
+Stampchain uses Solana SPL (Solana Program Library) tokens, specifically the Token-2022 program, to create loyalty tokens. These tokens are fungible digital assets that can be transferred between wallets and represent loyalty points or rewards.
+
+## SPL Token-2022
+
+Token-2022 is Solana's next-generation token program with enhanced features:
+
+- **On-chain Metadata**: Store token information directly on the blockchain
+- **Metadata Pointer Extension**: Link metadata to the mint account
+- **Improved Flexibility**: Better support for custom token features
+
+<Info>
+Stampchain uses `TOKEN_2022_PROGRAM_ID` for all token operations, providing better metadata support than the legacy SPL Token program.
+</Info>
+
+## Token Creation
+
+### Mint Account
+
+Every token starts with a mint account that defines the token's properties:
+
+```typescript
+import {
+  Connection,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  clusterApiUrl,
+} from "@solana/web3.js";
+import {
+  TOKEN_2022_PROGRAM_ID,
+  createInitializeMintInstruction,
+  getMintLen,
+  ExtensionType,
+} from "@solana/spl-token";
+
+// Generate unique mint authority
+const mintAuthority = Keypair.generate();
+
+// Calculate space needed for mint account
+const mintLen = getMintLen([ExtensionType.MetadataPointer]);
+
+// Create mint account
+const createAccountInstruction = SystemProgram.createAccount({
+  fromPubkey: keypair.publicKey,
+  newAccountPubkey: mintAuthority.publicKey,
+  space: mintLen,
+  lamports,
+  programId: TOKEN_2022_PROGRAM_ID,
+});
+```
+
+### Initialize Mint
+
+The mint is initialized with specific parameters:
+
+```typescript
+const initializeMintInstruction = createInitializeMintInstruction(
+  mintAuthority.publicKey,  // Mint address
+  Number(decimals),          // Number of decimals (typically 9)
+  mintAuthority.publicKey,   // Mint authority (can mint new tokens)
+  null,                      // Freeze authority (optional)
+  TOKEN_2022_PROGRAM_ID,
+);
+```
+
+<Note>
+The mint authority has the power to create new tokens. Stampchain stores this securely to enable token distribution.
+</Note>
+
+## Token Decimals
+
+Decimals determine the divisibility of your token:
+
+```typescript
+decimals: 9  // Default for Solana tokens
+```
+
+### How Decimals Work
+
+- **9 decimals**: Token can be divided into 1,000,000,000 parts
+- **1 token** = 1,000,000,000 base units (lamports for SOL)
+- **0.001 tokens** = 1,000,000 base units
+
+### Real Example
+
+```typescript
+// User wants to send 10 tokens with 9 decimals
+const tokensToSend = 10;
+const decimals = 9;
+const amountInBaseUnits = tokensToSend * (10 ** decimals);
+// Result: 10,000,000,000 base units
+
+// Using BigInt for large numbers
+const supplyBig = BigInt(String(totalSupply));
+const amountInBaseUnits = supplyBig * BigInt(10) ** BigInt(Number(decimals));
+```
+
+<Tip>
+Always use 9 decimals for Solana tokens to maintain consistency with SOL and other SPL tokens.
+</Tip>
+
+## Token Metadata
+
+### Off-chain Metadata
+
+Metadata is stored as JSON and uploaded to GitHub:
+
+```typescript
+const metadata = {
+  name: "Coffee Loyalty Token",
+  symbol: "CLT",
+  description: "Earn rewards with every coffee purchase",
+  image: "https://raw.githubusercontent.com/user/repo/main/assets/token.png",
+};
+
+const base64Metadata = Buffer.from(
+  JSON.stringify(metadata, null, 2)
+).toString("base64");
+
+const metadataUrl = await uploadToGithub({
+  path: `assets/${tokenSymbol}${crypto.randomUUID()}.json`,
+  contentBase64: base64Metadata,
+  message: `Upload metadata for ${tokenSymbol}`,
+});
+```
+
+### On-chain Metadata
+
+Stampchain uses Token-2022's metadata extension:
+
+```typescript
+import {
+  createInitializeInstruction,
+  createUpdateFieldInstruction,
+  TokenMetadata,
+} from "@solana/spl-token-metadata";
+
+const metaData: TokenMetadata = {
+  updateAuthority: keypair.publicKey,
+  mint: mintAuthority.publicKey,
+  name: "Coffee Loyalty Token",
+  symbol: "CLT",
+  uri: metadataUrl,  // Points to off-chain JSON
+  additionalMetadata: [["description", "Only Possible On Solana"]],
+};
+
+// Initialize metadata on-chain
+const initializeMetadataInstruction = createInitializeInstruction({
+  programId: TOKEN_2022_PROGRAM_ID,
+  metadata: mintAuthority.publicKey,
+  updateAuthority: keypair.publicKey,
+  mint: mintAuthority.publicKey,
+  mintAuthority: mintAuthority.publicKey,
+  name: metaData.name,
+  symbol: metaData.symbol,
+  uri: metaData.uri,
+});
+```
+
+<Info>
+The metadata pointer extension links the mint account to its metadata, making it easy for wallets and explorers to display token information.
+</Info>
+
+## Token Supply
+
+### Total Supply
+
+The total supply is the maximum number of tokens that will exist:
+
+```typescript
+totalSupply: "10000"  // 10,000 tokens
+```
+
+### Minting Supply
+
+The entire supply is minted to the server's associated token account:
+
+```typescript
+// Get or create server's token account
+const serverAta = await getAssociatedTokenAddress(
+  mintAuthority.publicKey,
+  keypair.publicKey,
+  false,
+  TOKEN_2022_PROGRAM_ID
+);
+
+// Calculate amount with decimals
+const supplyBig = BigInt(String(totalSupply));
+const amountInBaseUnits = supplyBig * BigInt(10) ** BigInt(Number(decimals));
+
+// Mint tokens
+const mintToIx = createMintToInstruction(
+  mintAuthority.publicKey,
+  serverAta,
+  mintAuthority.publicKey,
+  Number(amountInBaseUnits),
+  [],
+  TOKEN_2022_PROGRAM_ID
+);
+```
+
+### Associated Token Accounts (ATAs)
+
+Each wallet needs an associated token account to hold specific tokens:
+
+```typescript
+import {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+} from "@solana/spl-token";
+
+// Get ATA address
+const userAta = await getAssociatedTokenAddress(
+  mintAuthority.publicKey,  // Token mint
+  userWallet.publicKey,     // Wallet owner
+  false,                     // Not off-curve
+  TOKEN_2022_PROGRAM_ID
+);
+
+// Create ATA if it doesn't exist
+const createAtaIx = createAssociatedTokenAccountInstruction(
+  payer.publicKey,           // Fee payer
+  userAta,                   // ATA address
+  userWallet.publicKey,      // Owner
+  mintAuthority.publicKey,   // Mint
+  TOKEN_2022_PROGRAM_ID
+);
+```
+
+<Note>
+ATAs are deterministic - the same wallet will always have the same ATA address for a given token mint.
+</Note>
+
+## Token Transfers
+
+Stampchain uses the SPL Token transfer instruction to distribute tokens:
+
+```typescript
+import { transfer, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+
+// Transfer tokens from server to user
+await transfer(
+  connection,
+  sender,                    // Sender keypair
+  senderTokenAccount.address,
+  recipientTokenAccount.address,
+  sender.publicKey,
+  amount,                    // Amount in base units
+  [],
+  undefined,
+  TOKEN_2022_PROGRAM_ID
+);
+```
+
+### Transfer Flow
+
+1. **Validate QR Code**: Ensure code is unused and valid
+2. **Get/Create Recipient ATA**: Ensure user has token account
+3. **Calculate Amount**: Apply decimals correctly
+4. **Transfer Tokens**: Move tokens from server to user
+5. **Mark QR Used**: Prevent double-spending
+
+## Token Helper Functions
+
+Stampchain includes utility functions for common token operations:
+
+```typescript
+// Create new SPL token
+export async function createSPLToken({
+  decimals = 9,
+  MINT_AUTHORITY
+}: {
+  decimals?: number,
+  MINT_AUTHORITY: Signer
+}) {
+  const mint = await createMint(
+    connection,
+    MINT_AUTHORITY,
+    MINT_AUTHORITY.publicKey,
+    null,
+    decimals
+  );
+  return mint;
+}
+
+// Mint tokens to wallet
+export async function mintToWallet({
+  mint,
+  recipient,
+  amount,
+  MINT_AUTHORITY
+}: {
+  mint: PublicKey,
+  recipient: PublicKey,
+  amount: number,
+  MINT_AUTHORITY: Signer
+}) {
+  const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    MINT_AUTHORITY,
+    mint,
+    recipient
+  );
+
+  const signature = await mintTo(
+    connection,
+    MINT_AUTHORITY,
+    mint,
+    recipientTokenAccount.address,
+    MINT_AUTHORITY,
+    amount
+  );
+
+  return signature;
+}
+```
+
+## Viewing Tokens
+
+Users can view their tokens in any Solana wallet that supports Token-2022:
+
+- **Phantom Wallet**: Automatically displays SPL tokens
+- **Solflare**: Shows token balance and metadata
+- **Solana Explorer**: View on-chain token details
+
+```
+https://explorer.solana.com/address/[MINT_ADDRESS]?cluster=devnet
+```
+
+## Best Practices
+
+1. **Use 9 Decimals**: Standard for Solana ecosystem
+2. **Store Metadata Properly**: Upload high-quality images and detailed descriptions
+3. **Handle BigInt**: Use BigInt for supply calculations to avoid overflow
+4. **Secure Mint Authority**: The mint authority keypair is critical - store securely
+5. **Check ATA Existence**: Always get or create ATAs before transfers
+6. **Test on Devnet**: Verify token creation and transfers before mainnet
+
+## Security Considerations
+
+<Warning>
+The mint authority has full control over token creation. Stampchain stores mint authorities in the database to enable distribution, but this should be secured with encryption in production.
+</Warning>
+
+```typescript
+// Mint secret key is stored for later token distribution
+const { data, error } = await supabase.from('token_mints').insert({
+  mint_address: mintAuthority.publicKey.toBase58(),
+  mint_secret_key: Array.from(mintAuthority.secretKey),  // Secure this!
+  creator_email: session.user?.email,
+  // ... other fields
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Campaigns" icon="megaphone" href="/concepts/campaigns">
+    Create and manage token campaigns
+  </Card>
+  <Card title="Wallet Integration" icon="wallet" href="/concepts/wallet-integration">
+    Connect wallets and claim tokens
+  </Card>
+</CardGroup>

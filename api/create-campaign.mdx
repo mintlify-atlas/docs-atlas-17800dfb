@@ -1,0 +1,152 @@
+---
+title: "Create Campaign"
+description: "Create a new token campaign on Solana with metadata and distribution settings"
+---
+
+## POST /api/create-campaign
+
+Creates a new token campaign by minting a Token-2022 token on Solana devnet with metadata pointer extension and configurable claim settings.
+
+### Authentication
+
+Requires an active session via NextAuth. The endpoint validates the session and returns an error if the user is not logged in.
+
+### Request Body
+
+This endpoint accepts `multipart/form-data` with the following fields:
+
+<ParamField body="file" type="File" required>
+  Token image file to be uploaded and used as the token's visual representation
+</ParamField>
+
+<ParamField body="data" type="string" required>
+  JSON string containing campaign configuration with the following schema:
+</ParamField>
+
+#### Data Object Schema
+
+<ParamField body="name" type="string" required>
+  Token name (cannot be empty)
+</ParamField>
+
+<ParamField body="tokenSymbol" type="string" required>
+  Token symbol (cannot be empty)
+</ParamField>
+
+<ParamField body="blockchain" type="enum" required>
+  Blockchain network. Must be either `solana` or `ethereum`
+</ParamField>
+
+<ParamField body="description" type="string" optional>
+  Token description
+</ParamField>
+
+<ParamField body="expirationDate" type="string" optional>
+  Campaign expiration date
+</ParamField>
+
+<ParamField body="metadataUri" type="string" optional>
+  Custom metadata URI
+</ParamField>
+
+<ParamField body="maxClaimsPerWallet" type="string" required>
+  Maximum number of claims allowed per wallet
+</ParamField>
+
+<ParamField body="tokensPerClaim" type="string" required>
+  Number of tokens distributed per claim (cannot be empty)
+</ParamField>
+
+<ParamField body="decimals" type="string" default="9">
+  Token decimals (defaults to 9)
+</ParamField>
+
+<ParamField body="totalSupply" type="string" required>
+  Total token supply (cannot be empty)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the campaign was created successfully
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the operation failed, or `false` on success
+</ResponseField>
+
+<ResponseField name="validationError" type="boolean">
+  Indicates if the error was due to validation failure
+</ResponseField>
+
+<ResponseField name="explorer" type="string">
+  Solana Explorer URL for the transaction (devnet)
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Success page URL with campaign ID
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/create-campaign \
+  -H "Cookie: next-auth.session-token=your-session-token" \
+  -F "file=@token-image.png" \
+  -F 'data={
+    "name": "My Campaign Token",
+    "tokenSymbol": "MCT",
+    "blockchain": "solana",
+    "description": "A campaign token for rewards",
+    "maxClaimsPerWallet": "5",
+    "tokensPerClaim": "100",
+    "decimals": "9",
+    "totalSupply": "1000000"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "error": false,
+  "explorer": "https://explorer.solana.com/tx/5j8..xyz?cluster=devnet",
+  "url": "/admin/campaign/success?id=123"
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": "Please login to proceed"
+}
+```
+
+### Validation Error Response
+
+```json
+{
+  "success": false,
+  "error": {
+    "issues": [
+      {
+        "path": ["name"],
+        "message": "Token name cannot be empty"
+      }
+    ]
+  },
+  "validationError": true
+}
+```
+
+### Implementation Details
+
+- Creates a Token-2022 mint with metadata pointer extension
+- Uploads image and metadata to GitHub
+- Mints total supply to server wallet's associated token account
+- Stores campaign data in `token_mints` table
+- All transactions occur on Solana devnet
+- Returns Solana Explorer link for transaction verification

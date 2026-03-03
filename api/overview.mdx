@@ -1,0 +1,218 @@
+---
+title: API Overview
+description: Introduction to the Stampchain API, including base URLs, request/response formats, and error handling
+---
+
+## Introduction
+
+The Stampchain API is a Next.js-based REST API that enables developers to create and manage Solana token campaigns, generate QR codes for token distribution, and handle token claims. The API is built on the Solana blockchain using the Token-2022 program and integrates with NextAuth for authentication.
+
+## Base URL
+
+All API requests should be made to:
+
+```
+https://your-domain.com/api
+```
+
+For local development:
+
+```
+http://localhost:3000/api
+```
+
+## Request Format
+
+The Stampchain API accepts requests in two formats depending on the endpoint:
+
+### JSON Requests
+
+Most endpoints accept JSON-formatted request bodies:
+
+```bash
+curl -X POST https://your-domain.com/api/claim \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "unique-claim-code"
+  }'
+```
+
+### FormData Requests
+
+Endpoints that handle file uploads (e.g., campaign creation with images) use multipart/form-data:
+
+```bash
+curl -X POST https://your-domain.com/api/create-campaign \
+  -H "Cookie: next-auth.session-token=YOUR_SESSION_TOKEN" \
+  -F "file=@/path/to/image.png" \
+  -F 'data={"name":"My Token","tokenSymbol":"MTK","decimals":9,"totalSupply":1000000,"description":"Token description","maxClaimsPerWallet":5,"tokensPerClaim":100}'
+```
+
+## Response Format
+
+All API responses are returned in JSON format with a consistent structure:
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "data": {
+    // Response data specific to the endpoint
+  },
+  "error": false
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Error message describing what went wrong"
+}
+```
+
+### Validation Error Response
+
+When request validation fails, the response includes detailed validation errors:
+
+```json
+{
+  "success": false,
+  "error": {
+    "issues": [
+      {
+        "path": ["fieldName"],
+        "message": "Validation error message"
+      }
+    ]
+  },
+  "validationError": true
+}
+```
+
+## Error Handling
+
+The API uses standard HTTP status codes and returns descriptive error messages:
+
+### HTTP Status Codes
+
+- **200 OK** - Request succeeded
+- **400 Bad Request** - Invalid request parameters or validation errors
+- **401 Unauthorized** - Authentication required or invalid session
+- **500 Internal Server Error** - Server-side error occurred
+
+### Common Error Scenarios
+
+<Warning>
+Always check the `success` field in the response to determine if the request was successful.
+</Warning>
+
+#### Authentication Errors
+
+When accessing protected endpoints without a valid session:
+
+```json
+{
+  "success": false,
+  "error": "You are not authorized to this. Please log in",
+  "data": []
+}
+```
+
+Or:
+
+```json
+{
+  "success": false,
+  "data": "Please login to proceed"
+}
+```
+
+#### Validation Errors
+
+When request data fails validation:
+
+```json
+{
+  "success": false,
+  "error": {
+    "issues": [
+      {
+        "path": ["totalSupply"],
+        "message": "Expected number, received string"
+      }
+    ]
+  },
+  "validationError": true
+}
+```
+
+#### Resource Errors
+
+When a requested resource is not found or already used:
+
+```json
+{
+  "success": false,
+  "data": [],
+  "error": "This code has been used or invalid"
+}
+```
+
+#### Database Errors
+
+When database operations fail:
+
+```json
+{
+  "success": false,
+  "error": "Database error message",
+  "data": []
+}
+```
+
+## Rate Limiting
+
+<Note>
+The API does not currently implement rate limiting, but this may be added in future versions.
+</Note>
+
+## API Endpoints
+
+The Stampchain API provides the following endpoint categories:
+
+- **Authentication** - Google OAuth via NextAuth (`/api/auth`)
+- **Account Management** - Create user accounts and wallets (`/api/create-account`)
+- **Campaign Management** - Create and retrieve token campaigns (`/api/create-campaign`, `/api/get-all-campaigns`)
+- **QR Code Management** - Generate and load QR codes for claims (`/api/create-qr-codes`, `/api/load-qr-codes`)
+- **Token Claims** - Claim tokens using unique codes (`/api/claim`, `/api/claim/to-wallet`)
+- **Data Retrieval** - Fetch campaign details and user data (`/api/fetch-claim-qr-details`, `/api/get-wallet`)
+
+For detailed information about authentication requirements, see the [Authentication](/api/authentication) guide.
+
+## Blockchain Integration
+
+<Note>
+All token operations use Solana's **Token-2022 program** on the **devnet** cluster. Transactions are confirmed before returning responses.
+</Note>
+
+The API integrates with Solana blockchain for:
+
+- Creating token mints with metadata
+- Minting initial token supply
+- Transferring tokens to claimers
+- Managing associated token accounts
+
+Transaction signatures and Solana Explorer links are included in relevant API responses:
+
+```json
+{
+  "success": true,
+  "error": false,
+  "explorer": "https://explorer.solana.com/tx/SIGNATURE?cluster=devnet",
+  "url": "/admin/campaign/success?id=123"
+}
+```

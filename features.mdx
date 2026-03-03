@@ -1,0 +1,294 @@
+---
+title: Platform features
+description: Everything you need to launch and manage successful blockchain-powered loyalty campaigns
+---
+
+# Everything you need for digital loyalty
+
+Stampchain provides a complete suite of tools to create, distribute, and manage token-based loyalty programs. From QR code generation to wallet integration, we've built everything you need.
+
+## Core features
+
+<CardGroup cols={2}>
+  <Card title="Custom tokens" icon="coins">
+    Create your own ERC-20 loyalty tokens with built-in supply caps and security features.
+  </Card>
+  <Card title="QR code generation" icon="qrcode">
+    Generate unique, secure QR codes for campaigns with one-time use protection and expiration dates.
+  </Card>
+  <Card title="Fraud prevention" icon="shield">
+    Built-in protection against double claims, wallet limits, and QR code abuse.
+  </Card>
+  <Card title="Multi-wallet support" icon="users">
+    Connect with Phantom, WalletConnect, and other popular wallet providers.
+  </Card>
+  <Card title="Analytics dashboard" icon="chart-line">
+    Track claims, monitor campaign performance, and analyze user engagement in real-time.
+  </Card>
+  <Card title="Instant deployment" icon="bolt">
+    Launch your loyalty program in minutes, not weeks. No coding or blockchain knowledge required.
+  </Card>
+</CardGroup>
+
+## Custom tokens
+
+Create branded loyalty tokens that your customers can hold in their wallets.
+
+### Token configuration
+
+Full control over your token economics:
+
+```typescript
+{
+  name: "Coffee Shop Loyalty Program",
+  tokenSymbol: "COFFEE",
+  totalSupply: "10000",
+  tokensPerClaim: "10",
+  decimals: "9",
+  blockchain: "solana" // or "ethereum"
+}
+```
+
+### Built-in features
+
+- **Supply caps** - Set maximum token supply to create scarcity
+- **Custom metadata** - Add images, descriptions, and external links
+- **Multi-chain support** - Deploy on Solana or Ethereum
+- **Standard compliance** - ERC-20 compatible tokens
+
+<Note>
+  Tokens are created as real blockchain assets that customers can hold, trade, or redeem according to your program rules.
+</Note>
+
+## QR code generation
+
+Generate secure, single-use QR codes for token distribution.
+
+### QR code features
+
+- **Unique identifiers** - Each QR code contains a unique ID for one-time use
+- **Expiration dates** - Set campaign-level or individual QR expiration
+- **Batch generation** - Create multiple codes at once for events
+- **Print-ready** - Export QR codes for physical materials
+
+### Use cases
+
+<CardGroup cols={2}>
+  <Card title="Receipt codes">
+    Print QR codes on purchase receipts for instant rewards
+  </Card>
+  <Card title="Event codes">
+    Generate batch codes for conferences and meetups
+  </Card>
+  <Card title="Product packaging">
+    Include QR codes on product labels and packaging
+  </Card>
+  <Card title="Marketing materials">
+    Add QR codes to flyers, posters, and advertisements
+  </Card>
+</CardGroup>
+
+<Tip>
+  Navigate to `/qr-generator` in your dashboard to create and manage QR codes for your campaigns.
+</Tip>
+
+## Fraud prevention
+
+Built-in security features protect your campaigns from abuse.
+
+### Protection mechanisms
+
+**One-time use validation**
+
+Each QR code can only be claimed once:
+
+```typescript
+// Claim validation schema
+{
+  tokenId: string,        // Campaign identifier
+  uniqueId: string,       // Unique QR code ID
+  walletAddress: string,  // Claiming wallet
+  wallet: "solana"        // Wallet type
+}
+```
+
+**Wallet claim limits**
+
+Set maximum claims per wallet address:
+
+```typescript
+{
+  maxClaimsPerWallet: "5" // Limit each wallet to 5 claims
+}
+```
+
+**Campaign expiration**
+
+Automatically disable claims after a set date:
+
+```typescript
+{
+  expirationDate: "2026-12-31" // Optional campaign end date
+}
+```
+
+<Warning>
+  Fraud prevention is automatic and cannot be bypassed. All claims are validated on-chain before tokens are transferred.
+</Warning>
+
+## Multi-wallet support
+
+Customers can claim tokens using their preferred wallet provider.
+
+### Supported wallets
+
+- **Phantom** - Popular Solana wallet
+- **WalletConnect** - Universal wallet connection protocol
+- **Other providers** - Extensible wallet integration
+
+### Claiming flow
+
+When customers scan a QR code:
+
+<Steps>
+  <Step title="Scan QR code">
+    Customer scans the QR code with their mobile device
+  </Step>
+  <Step title="Connect wallet">
+    Choose their preferred wallet provider (Phantom, WalletConnect, etc.)
+  </Step>
+  <Step title="Validate claim">
+    System validates the QR code and wallet eligibility
+  </Step>
+  <Step title="Receive tokens">
+    Tokens are instantly transferred to their wallet
+  </Step>
+</Steps>
+
+<Info>
+  The claim page is located at `/claim` and handles all wallet connections and token transfers automatically.
+</Info>
+
+## Analytics dashboard
+
+Track campaign performance and user engagement in real-time.
+
+### Dashboard features
+
+Access your admin dashboard at `/admin` to view:
+
+**Campaign metrics**
+- Total campaigns created
+- Active vs. completed campaigns
+- Total tokens distributed
+- Remaining token supply
+
+**Claim analytics**
+- Total claims across all campaigns
+- Claims per campaign
+- Unique wallets claiming
+- Claim trends over time
+
+**Performance insights**
+- Popular claim times
+- Geographic distribution
+- Campaign ROI metrics
+- User engagement patterns
+
+### Dashboard tabs
+
+<CardGroup cols={3}>
+  <Card title="Campaigns" icon="folder">
+    View and manage all your loyalty campaigns
+  </Card>
+  <Card title="Analytics" icon="chart-line">
+    Track performance and analyze engagement
+  </Card>
+  <Card title="Settings" icon="gear">
+    Configure account preferences and integrations
+  </Card>
+</CardGroup>
+
+<Note>
+  All analytics update in real-time as customers claim tokens from your campaigns.
+</Note>
+
+## Instant deployment
+
+Launch loyalty programs without coding or blockchain expertise.
+
+### No-code workflow
+
+<Steps>
+  <Step title="Configure campaign">
+    Fill out a simple form with campaign details
+  </Step>
+  <Step title="Review preview">
+    See exactly how your campaign will look before deploying
+  </Step>
+  <Step title="Deploy to blockchain">
+    One-click deployment creates your token contract
+  </Step>
+  <Step title="Generate QR codes">
+    Create distribution codes immediately after deployment
+  </Step>
+</Steps>
+
+### Campaign preview
+
+Before deploying, review your campaign configuration:
+
+```typescript
+Campaign Preview {
+  totalSupply: "10000 COFFEE",
+  tokensPerClaim: "10 per claim",
+  duration: "No Expiry" | "Limited Time",
+  blockchain: "solana"
+}
+```
+
+### Time to launch
+
+- **Traditional loyalty programs** - Weeks or months of development
+- **Stampchain** - Minutes from signup to first campaign
+
+<Tip>
+  Follow our [quickstart guide](/quickstart) to launch your first campaign in under 5 minutes.
+</Tip>
+
+## Use cases
+
+Stampchain adapts to your unique business needs.
+
+### Local businesses
+
+Replace punch cards with digital rewards. Customers scan QR codes on receipts to earn loyalty tokens.
+
+### Content creators
+
+Reward your most engaged fans with exclusive tokens for likes, shares, and event attendance.
+
+### DAOs & communities
+
+Distribute governance tokens and POAP-style rewards for community participation and events.
+
+### E-commerce brands
+
+Integrate with Shopify to automatically reward customers with tokens after purchases.
+
+### Event organizers
+
+Create memorable experiences with claimable tokens for attendees at conferences and meetups.
+
+### Developers & agencies
+
+Offer branded loyalty solutions as a service to your clients with our white-label platform.
+
+<CardGroup cols={2}>
+  <Card title="Get started" icon="rocket" href="/quickstart">
+    Create your first campaign in under 5 minutes
+  </Card>
+  <Card title="Creating campaigns" icon="plus" href="/guides/creating-campaigns">
+    Learn how to create and configure loyalty campaigns
+  </Card>
+</CardGroup>

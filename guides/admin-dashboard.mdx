@@ -1,0 +1,386 @@
+---
+title: Admin Dashboard
+description: Overview of the Stampchain admin dashboard features and campaign management tools
+---
+
+The Stampchain admin dashboard is your central hub for managing loyalty campaigns, monitoring performance, and accessing all platform features. This guide provides a comprehensive overview of the dashboard interface and capabilities.
+
+## Dashboard Overview
+
+The admin dashboard is located at `/admin` and serves as the main control center for your Stampchain account. It provides real-time statistics, campaign management tools, and access to analytics.
+
+**Location in code:** `src/app/(protected-route)/admin/page.tsx:20`
+
+<Note>
+  Screenshot placeholder: Full admin dashboard showing stats, tabs, and campaign list
+</Note>
+
+## Dashboard Layout
+
+The dashboard is organized into three main sections:
+
+1. **Stats Overview**: Key metrics displayed at the top
+2. **Tabbed Navigation**: Three tabs for Campaigns, Analytics, and Settings
+3. **Content Area**: Tab-specific content and management tools
+
+## Stats Overview
+
+At the top of the dashboard, you'll see two prominent statistics cards that provide a quick snapshot of your account performance.
+
+**Location in code:** `src/app/(protected-route)/admin/components/stats.tsx:139`
+
+### Total Campaigns
+
+The first card displays:
+- **Total number of campaigns** created in the current month
+- **Percentage change** from the previous month
+- **Trend indicator** (up or down arrow)
+- Icon: Target symbol
+
+Example: "12 Total Campaigns" with "15% from this month" and an upward trend arrow.
+
+**Location in code:** `src/app/(protected-route)/admin/components/stats.tsx:98`
+
+### Tokens Distributed
+
+The second card shows:
+- **Total tokens distributed** through all campaigns
+- **Percentage change** from last month
+- **Trend indicator** showing growth or decline
+- Icon: Coins symbol
+
+Example: "2,340 Tokens Distributed" with "22% from last month" and an upward trend arrow.
+
+**Location in code:** `src/app/(protected-route)/admin/components/stats.tsx:119`
+
+<Info>
+  These statistics are calculated in real-time from your database and update automatically as campaigns are created and tokens are claimed.
+</Info>
+
+## Campaigns Tab
+
+The Campaigns tab is the default view and displays all your active and completed campaigns.
+
+**Location in code:** `src/app/(protected-route)/admin/page.tsx:36`
+
+### Campaign List
+
+Each campaign in the list shows:
+
+<CardGroup cols={2}>
+  <Card title="Campaign Header" icon="heading">
+    - Campaign name
+    - Token symbol
+    - Creation date
+    - Status badge (Active/Completed/Expired)
+  </Card>
+
+  <Card title="Key Metrics" icon="chart-simple">
+    - Tokens distributed
+    - Total supply
+    - Unique users
+    - QR codes generated
+  </Card>
+
+  <Card title="Progress Bars" icon="bars-progress">
+    - Token distribution progress
+    - QR code usage rate
+    - Visual representation of supply utilization
+  </Card>
+
+  <Card title="Action Buttons" icon="mouse-pointer">
+    - View details
+    - Generate QR codes
+    - Edit campaign
+    - Campaign settings
+  </Card>
+</CardGroup>
+
+### Empty State
+
+If you haven't created any campaigns yet, you'll see:
+- Empty state message
+- "Create Campaign" call-to-action button
+- Brief description of what campaigns do
+
+**Location in code:** `src/app/(protected-route)/admin/components/empty/empty-campaign.tsx`
+
+### Campaign Details View
+
+Clicking on a campaign opens the detailed view with multiple tabs:
+
+#### Overview Tab
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/overview.tsx:86`
+
+- **Daily Claims Activity**: Line graph showing token claims over the last 30 days
+- **Campaign Details Card**: 
+  - Creation date
+  - Tokens per claim
+  - Max claims per wallet
+- **Quick Stats Grid**:
+  - QR codes generated
+  - Total claims
+
+<Note>
+  Screenshot placeholder: Campaign overview tab with activity graph and stats cards
+</Note>
+
+#### Token Details
+
+- Token symbol and supply information
+- Blockchain network
+- Contract address
+- Token distribution statistics
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/token-details-card.tsx`
+
+#### Settings Tab
+
+- Campaign configuration
+- Enable/disable campaign
+- Update expiration dates
+- Modify token distribution rules
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/settings.tsx`
+
+## Analytics Tab
+
+The Analytics tab provides insights into campaign performance and user engagement across all campaigns.
+
+**Location in code:** `src/app/(protected-route)/admin/page.tsx:42`
+
+### Token Distribution Trends
+
+A chart showing:
+- Daily token claims over the last 30 days
+- Trend lines for multiple campaigns
+- Peak claim periods
+- Distribution patterns
+
+**Location in code:** `src/app/(protected-route)/admin/components/view-analytics.tsx:13`
+
+### User Engagement Metrics
+
+Displays:
+- Total unique users across campaigns
+- Average claims per user
+- Retention rates
+- Engagement trends over time
+
+**Location in code:** `src/app/(protected-route)/admin/components/view-analytics.tsx:28`
+
+<Note>
+  For detailed information about analytics and metrics, see the [Analytics Guide](/guides/analytics).
+</Note>
+
+## Settings Tab
+
+The Settings tab provides account-level configuration options.
+
+**Location in code:** `src/app/(protected-route)/admin/page.tsx:46`
+
+### Available Settings
+
+<AccordionGroup>
+  <Accordion title="Account Settings">
+    - Profile information
+    - Email preferences
+    - Notification settings
+    - Account security
+  </Accordion>
+
+  <Accordion title="Wallet Management">
+    - Connected wallet addresses
+    - Default wallet for deployments
+    - Wallet verification status
+    - Transaction history
+  </Accordion>
+
+  <Accordion title="API Access">
+    - API keys for integrations
+    - Webhook configurations
+    - Rate limits and usage
+    - Documentation links
+  </Accordion>
+
+  <Accordion title="Billing & Usage">
+    - Current plan details
+    - Usage statistics
+    - Billing history
+    - Upgrade options
+  </Accordion>
+</AccordionGroup>
+
+**Location in code:** `src/app/(protected-route)/admin/components/view-settings.tsx`
+
+## Common Actions
+
+### Creating a New Campaign
+
+<Steps>
+  <Step title="Click 'New Campaign' Button">
+    Located in the top right of the dashboard or in the empty state if you have no campaigns.
+  </Step>
+  
+  <Step title="Fill Out Campaign Form">
+    Complete all required fields including campaign details, token configuration, and security settings.
+  </Step>
+  
+  <Step title="Review and Deploy">
+    Preview your campaign and deploy the smart contract to the blockchain.
+  </Step>
+</Steps>
+
+See the complete guide: [Creating Campaigns](/guides/creating-campaigns)
+
+### Generating QR Codes
+
+<Steps>
+  <Step title="Select Campaign">
+    Click the "Generate QR Codes" button on any campaign card.
+  </Step>
+  
+  <Step title="Choose Quantity">
+    Select how many QR codes to generate (5, 10, 25, 50, or 100).
+  </Step>
+  
+  <Step title="Download and Distribute">
+    Download individual codes or all codes as a batch.
+  </Step>
+</Steps>
+
+See the complete guide: [Generating QR Codes](/guides/generating-qr-codes)
+
+### Monitoring Campaign Performance
+
+<Steps>
+  <Step title="Open Campaign Details">
+    Click on any campaign to view its detail page.
+  </Step>
+  
+  <Step title="Review Overview Tab">
+    Check the daily activity graph and quick stats.
+  </Step>
+  
+  <Step title="Analyze Trends">
+    Look for patterns in claim timing and user behavior.
+  </Step>
+  
+  <Step title="Adjust Strategy">
+    Use insights to optimize QR code placement and distribution.
+  </Step>
+</Steps>
+
+## Dashboard Features by Role
+
+### Campaign Creator
+
+- Create and manage multiple campaigns
+- Generate unlimited QR codes
+- Access detailed analytics
+- Export campaign data
+
+### Viewer (If Applicable)
+
+- View campaign statistics
+- Access analytics dashboards
+- Cannot create or modify campaigns
+- Read-only access to settings
+
+## Keyboard Shortcuts
+
+Speed up your workflow with these keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| `n` | Create new campaign |
+| `c` | Navigate to Campaigns tab |
+| `a` | Navigate to Analytics tab |
+| `s` | Navigate to Settings tab |
+| `/` | Focus search (when available) |
+| `?` | Show keyboard shortcuts help |
+
+## Mobile Dashboard
+
+The dashboard is fully responsive and optimized for mobile devices:
+
+- **Stacked Layout**: Stats and cards stack vertically on small screens
+- **Touch-Friendly**: Large buttons and touch targets
+- **Simplified Navigation**: Drawer menu for tab navigation
+- **Essential Metrics**: Focus on key statistics on mobile
+
+<Info>
+  While all features are accessible on mobile, we recommend using a desktop or tablet for campaign creation and detailed analytics review.
+</Info>
+
+## Performance Optimization
+
+The dashboard uses several techniques to ensure fast loading:
+
+- **Suspense Boundaries**: Components load independently
+- **Skeleton Loaders**: Show loading states instead of blank screens
+- **Data Caching**: Frequently accessed data is cached
+- **Lazy Loading**: Charts and graphs load on demand
+
+**Location in code:** `src/app/(protected-route)/admin/page.tsx:25`
+
+## Troubleshooting
+
+### Dashboard Won't Load
+
+1. Check your authentication status
+2. Verify internet connection
+3. Clear browser cache
+4. Try incognito/private mode
+5. Check browser console for errors
+
+### Stats Not Updating
+
+1. Refresh the page
+2. Check if campaigns have recent activity
+3. Verify database connection
+4. Wait a few minutes for cache to clear
+
+### Campaign Details Missing
+
+1. Ensure campaign exists in database
+2. Check campaign ID in URL
+3. Verify you have permission to view
+4. Try accessing from campaign list
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Monitoring" icon="eye">
+    Check your dashboard daily during active campaigns to monitor performance and respond to trends.
+  </Card>
+
+  <Card title="Quick Actions" icon="bolt">
+    Use keyboard shortcuts and bookmarked campaign pages for faster access to frequently used features.
+  </Card>
+
+  <Card title="Data Export" icon="download">
+    Regularly export analytics data for external analysis and record-keeping.
+  </Card>
+
+  <Card title="Mobile Checks" icon="mobile">
+    Occasionally review the dashboard on mobile to ensure you can manage campaigns from anywhere.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Create Campaign" icon="plus" href="/guides/creating-campaigns">
+    Set up your first loyalty campaign
+  </Card>
+
+  <Card title="Generate QR Codes" icon="qrcode" href="/guides/generating-qr-codes">
+    Create codes for distribution
+  </Card>
+
+  <Card title="View Analytics" icon="chart-line" href="/guides/analytics">
+    Dive deep into campaign metrics
+  </Card>
+</CardGroup>

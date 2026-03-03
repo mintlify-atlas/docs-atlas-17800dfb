@@ -1,0 +1,90 @@
+---
+title: "Claim Token"
+description: "Validate a QR code token and retrieve the associated campaign ID for claiming tokens"
+---
+
+## POST /api/claim
+
+Validates a unique token code from a QR code and returns the associated campaign ID if the token is valid and unused.
+
+### Authentication
+
+No authentication required.
+
+### Request Body
+
+<ParamField body="token" type="string" required>
+  The unique code from the QR code to validate
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the request was successful
+</ResponseField>
+
+<ResponseField name="data" type="string | null">
+  The campaign ID associated with the token if valid, null otherwise
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the request failed, false if successful
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/claim \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "unique-qr-code-string"
+  }'
+```
+
+### Example Response
+
+#### Success
+
+```json
+{
+  "success": true,
+  "data": "campaign-id-12345",
+  "error": false
+}
+```
+
+#### Error - Token Already Used
+
+```json
+{
+  "success": false,
+  "data": [],
+  "error": "This code has been used or invalid"
+}
+```
+
+#### Error - Invalid Token Format
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Validation error message"
+}
+```
+
+### Claim Validation Process
+
+The endpoint performs the following validation steps:
+
+1. **Request Validation**: Validates the request body against `ClaimTokenValidation` schema
+2. **Database Lookup**: Queries the `qr_codes` table for a matching `unique_code`
+3. **Usage Check**: Verifies that the `used` field is `false`
+4. **Campaign Retrieval**: Returns the associated `campaign_id` if all checks pass
+
+### Error Scenarios
+
+- **Token not found**: Returns database error message
+- **Token already used**: Returns "This code has been used or invalid"
+- **Invalid request format**: Returns validation error from the schema
+- **Database errors**: Returns the underlying database error message

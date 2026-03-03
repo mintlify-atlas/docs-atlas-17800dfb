@@ -1,0 +1,288 @@
+---
+title: Generating QR Codes
+description: Learn how to generate, download, and distribute QR codes for your Stampchain loyalty campaigns
+---
+
+QR codes are the primary way users claim tokens in your loyalty campaign. This guide explains how to generate, manage, and distribute QR codes for your Stampchain campaigns.
+
+## Overview
+
+Each QR code is a one-time use token that directs users to a claim page where they can receive loyalty tokens to their wallet. The QR code generation system allows you to create batches of codes for distribution to customers.
+
+<Steps>
+  <Step title="Access QR Code Generator">
+    After creating a campaign, you'll see a "Generate QR Codes" button on the success page. You can also access the QR generator at any time by:
+    
+    1. Navigating to `/qr-generator` from your admin dashboard
+    2. Clicking the QR code icon on your campaign details page
+    
+    **Location in code:** `src/app/(protected-route)/admin/campaign/success/components/GenerateQR.tsx:35`
+  </Step>
+
+  <Step title="Select Campaign">
+    On the QR generator page, you'll see a configuration panel on the left side.
+
+    ### Choose Your Campaign
+    From the dropdown menu, select the campaign you want to generate QR codes for. The dropdown shows:
+    - Campaign name
+    - Token symbol in parentheses
+    
+    For example: "Coffee Shop Loyalty Program (COFFEE)"
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/configuration-panel-form.tsx:111`
+
+    <Note>
+      Screenshot placeholder: Campaign selection dropdown with multiple campaigns listed
+    </Note>
+  </Step>
+
+  <Step title="Specify Quantity">
+    Choose how many QR codes to generate from the quantity dropdown:
+    
+    - 5 QR Codes
+    - 10 QR Codes
+    - 25 QR Codes
+    - 50 QR Codes
+    - 100 QR Codes
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/configuration-panel-form.tsx:129`
+
+    <Info>
+      Each QR code can only be used once. Plan your quantity based on the number of customers you expect to reach.
+    </Info>
+  </Step>
+
+  <Step title="Generate QR Codes">
+    Click the "Generate QR Codes" button to create your batch. The system will:
+    
+    1. Create unique claim tokens for each QR code
+    2. Generate claim URLs that include the token
+    3. Render QR codes that link to the claim page
+    4. Display all generated codes in a grid layout
+
+    The generation process typically takes a few seconds depending on the quantity requested.
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/configuration-panel-form.tsx:39`
+
+    <Note>
+      Screenshot placeholder: Generated QR codes displayed in a grid with tokens and action buttons
+    </Note>
+  </Step>
+
+  <Step title="View QR Code Details">
+    Each generated QR code is displayed in a card showing:
+
+    ### QR Code Number
+    Sequential numbering (e.g., "QR Code #1", "QR Code #2")
+
+    ### One-time Use Badge
+    A badge indicating the code can only be claimed once
+
+    ### Visual QR Code
+    The scannable QR code image that users will scan with their camera
+
+    ### Claim Token
+    A unique alphanumeric token in a read-only input field. Users can manually enter this token on the claim page if they can't scan the QR code.
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/qr-code-display.tsx:77`
+  </Step>
+
+  <Step title="Copy Claim Tokens">
+    Each QR code card includes a copy button next to the claim token. Click this button to:
+    
+    - Copy the token to your clipboard
+    - Share the token via text or email
+    - Provide backup access if the QR code is damaged
+
+    The button shows a checkmark icon for 2 seconds after copying to confirm the action.
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/qr-code-display.tsx:20`
+  </Step>
+
+  <Step title="Download Individual QR Codes">
+    Each QR code card has a "Download" button that saves the QR code as an image file to your device. This is useful for:
+    
+    - Printing individual codes
+    - Sharing specific codes digitally
+    - Creating custom marketing materials
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/qr-code-display.tsx:122`
+  </Step>
+
+  <Step title="Download All QR Codes">
+    At the top of the configuration panel, you'll see a "Download All" button that appears after generating codes. This button:
+    
+    - Downloads all QR codes in a single ZIP file
+    - Names each file sequentially
+    - Provides a convenient way to distribute multiple codes
+
+    The button shows the count of codes being downloaded (e.g., "Download All (25)").
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/configuration-panel-form.tsx:162`
+
+    <Note>
+      Screenshot placeholder: Download All button at the top showing the count of generated codes
+    </Note>
+  </Step>
+
+  <Step title="Test QR Codes">
+    Before distributing your QR codes, test them to ensure they work correctly:
+
+    1. Click the "Test Claim" button on any QR code card
+    2. You'll be redirected to the claim page with the token pre-filled
+    3. Follow the claim process to verify it works
+
+    **Location in code:** `src/app/(protected-route)/qr-generator/components/qr-code-display.tsx:132`
+
+    <Warning>
+      Testing a QR code will mark it as used. Generate extra codes for testing purposes, or test with a separate wallet.
+    </Warning>
+  </Step>
+</Steps>
+
+## Distribution Methods
+
+Once you've generated and downloaded your QR codes, there are several effective ways to distribute them to customers:
+
+<CardGroup cols={2}>
+  <Card title="Physical Print" icon="print">
+    Print QR codes on receipts, business cards, posters, table tents, or stickers. Place them where customers can easily scan them.
+  </Card>
+
+  <Card title="Digital Sharing" icon="share-nodes">
+    Share QR codes via email, SMS, social media, or messaging apps. Include the visual code and the backup claim token.
+  </Card>
+
+  <Card title="Event Distribution" icon="calendar">
+    Display QR codes at events, conferences, or pop-up shops. Use large posters or digital displays for easy scanning.
+  </Card>
+
+  <Card title="Product Packaging" icon="box">
+    Include QR codes on product packaging, labels, or inserts. This rewards customers at the point of purchase.
+  </Card>
+</CardGroup>
+
+## QR Code Management
+
+### Viewing Existing QR Codes
+
+The QR generator automatically loads previously generated codes for the selected campaign. When you select a campaign from the dropdown, all existing QR codes are fetched and displayed.
+
+**Location in code:** `src/app/(protected-route)/qr-generator/components/qr-code-display.tsx:30`
+
+### Tracking QR Code Usage
+
+QR codes show their status:
+- **Available**: Ready to be claimed (indicated by "One-time use" badge)
+- **Used**: Already claimed (tracked in the database)
+
+You can monitor usage statistics in the [Analytics](/guides/analytics) section of your admin dashboard.
+
+### Generating Additional Codes
+
+You can generate more QR codes for a campaign at any time:
+
+1. Return to the QR generator
+2. Select the same campaign
+3. Choose additional quantity
+4. Click "Generate QR Codes"
+
+New codes are added to the existing pool and displayed alongside previous codes.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Print Quality">
+    When printing QR codes:
+    - Use high resolution (300 DPI minimum)
+    - Ensure sufficient size (at least 2cm × 2cm)
+    - Test scanning from various distances
+    - Avoid glossy surfaces that create glare
+  </Accordion>
+
+  <Accordion title="Backup Access">
+    Always provide the claim token as backup:
+    - Include it in small print below the QR code
+    - Share it alongside digital QR codes
+    - Keep a master list of tokens and their distribution locations
+  </Accordion>
+
+  <Accordion title="Security Considerations">
+    Protect your QR codes from fraud:
+    - Don't share QR codes publicly online (one person could claim them all)
+    - Limit distribution to verified customers
+    - Monitor analytics for unusual claiming patterns
+    - Generate codes in batches as needed rather than all at once
+  </Accordion>
+
+  <Accordion title="Strategic Placement">
+    Place QR codes where they provide value:
+    - High-traffic areas with good lighting
+    - Near checkout counters or point of sale
+    - On receipts after purchase
+    - At the completion of a service
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### QR Codes Not Loading
+
+If previously generated QR codes don't appear:
+1. Verify you've selected the correct campaign
+2. Check your internet connection
+3. Refresh the page
+4. Ensure the campaign exists and is active
+
+### Download Failures
+
+If downloads fail:
+1. Check browser permissions for file downloads
+2. Ensure sufficient disk space
+3. Try downloading individual codes instead of batch
+4. Clear browser cache and try again
+
+### Scanning Issues
+
+If customers report scanning problems:
+1. Test the QR code with multiple devices
+2. Verify the QR code isn't damaged or distorted
+3. Ensure adequate lighting when scanning
+4. Provide the backup claim token
+
+## Technical Details
+
+### QR Code Format
+
+Each QR code encodes a URL in the format:
+```
+https://your-domain.com/claim?token=UNIQUE_TOKEN_ID
+```
+
+The token is a unique identifier that links to:
+- The campaign ID
+- Token allocation details
+- Usage status
+
+### Claim Process
+
+When a user scans a QR code:
+1. Their camera app opens the claim URL
+2. The claim page validates the token
+3. User connects their wallet
+4. Tokens are transferred to their wallet
+5. QR code is marked as used
+
+See [Claiming Rewards](/guides/claiming-rewards) for the complete user flow.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Track Claims" icon="chart-line" href="/guides/analytics">
+    Monitor how many of your QR codes have been claimed and analyze campaign performance.
+  </Card>
+
+  <Card title="Claim Flow" icon="wallet" href="/guides/claiming-rewards">
+    Understand what users experience when they scan your QR codes.
+  </Card>
+</CardGroup>

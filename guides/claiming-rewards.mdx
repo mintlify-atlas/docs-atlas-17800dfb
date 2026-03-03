@@ -1,0 +1,335 @@
+---
+title: Claiming Rewards
+description: End-user guide for scanning QR codes and claiming loyalty tokens to your crypto wallet
+---
+
+This guide explains the complete user experience for claiming loyalty tokens through Stampchain. Understanding this flow helps you guide your customers and troubleshoot issues.
+
+## Overview
+
+The claiming process is designed to be simple for end users, requiring only a QR code scan and a wallet connection. The entire flow is completed in three steps, taking less than a minute.
+
+## The Claim Flow
+
+<Steps>
+  <Step title="Scan QR Code or Enter Token">
+    Users begin the claim process by either:
+
+    ### Option 1: Scan QR Code
+    1. Open their phone's camera app
+    2. Point it at your QR code
+    3. Tap the notification that appears
+    4. They're redirected to the claim page with the token pre-filled
+
+    ### Option 2: Manual Token Entry
+    If scanning isn't possible, users can:
+    1. Navigate to your claim page
+    2. Manually enter the claim token
+    3. Click "Validate Token"
+
+    **Location in code:** `src/app/claim/components/Step1.tsx:31`
+
+    <Note>
+      Screenshot placeholder: Step 1 showing the claim token input field with QR code icon
+    </Note>
+
+    ### Token Validation
+
+    When the user submits the token, the system:
+    - Verifies the token exists in the database
+    - Checks if it has already been used
+    - Validates the associated campaign is still active
+    - Confirms the campaign hasn't expired
+
+    **Location in code:** `src/app/claim/components/Step1.tsx:36`
+
+    If validation fails, users see an error message explaining the issue:
+    - "Token not found"
+    - "Token already used"
+    - "Campaign has expired"
+    - "Campaign is no longer active"
+  </Step>
+
+  <Step title="View Reward and Connect Wallet">
+    After successful token validation, users see:
+
+    ### Campaign Information
+    A card displaying:
+    - Campaign name (e.g., "Coffee Shop Loyalty Program")
+    - Campaign description
+    - Number of tokens available to claim
+    - Token symbol (e.g., "10 COFFEE")
+
+    **Location in code:** `src/app/claim/components/Step2.tsx:79`
+
+    <Note>
+      Screenshot placeholder: Step 2 showing the campaign details card with token amount prominently displayed
+    </Note>
+
+    ### Wallet Connection
+
+    Users must connect a crypto wallet to receive tokens:
+
+    1. Click the "Connect Wallet" button
+    2. Select their wallet provider (e.g., Phantom for Solana, MetaMask for Base)
+    3. Approve the connection in their wallet app
+    4. See confirmation: "Wallet connected: [address]"
+
+    **Location in code:** `src/app/claim/components/Step2.tsx:123`
+
+    <Info>
+      The connected wallet address is displayed in a shortened format (e.g., "7xK2...4mQ9") for security and readability.
+    </Info>
+
+    ### Claim Button
+
+    Once the wallet is connected, the "Claim Tokens" button becomes active. Users click this button to initiate the token transfer.
+
+    **Location in code:** `src/app/claim/components/Step2.tsx:124`
+
+    The button shows a loading state during processing:
+    - Loading spinner icon
+    - Text changes to "Claiming Tokens..."
+    - Button is disabled to prevent double-claiming
+
+    ### Blockchain Transaction
+
+    When claiming:
+    1. Token transfer is initiated on the blockchain
+    2. User may need to approve the transaction in their wallet
+    3. Transaction is confirmed on-chain
+    4. QR code is marked as used in the database
+    5. User's wallet address is recorded
+
+    **Location in code:** `src/app/claim/components/Step2.tsx:51`
+
+    <Warning>
+      Users should not close the browser or refresh the page during token claiming. This could result in a failed transaction.
+    </Warning>
+  </Step>
+
+  <Step title="Claim Success">
+    After successful token transfer, users see a confirmation screen:
+
+    ### Success Message
+    - Large checkmark icon
+    - "Tokens Claimed Successfully!" heading
+    - "Your loyalty tokens have been sent to your wallet" description
+
+    **Location in code:** `src/app/claim/components/Step3.tsx:12`
+
+    ### Token Summary
+    A prominent display showing:
+    - Number of tokens received (e.g., "+10 COFFEE")
+    - "Added to your wallet" confirmation
+
+    **Location in code:** `src/app/claim/components/Step3.tsx:21`
+
+    <Note>
+      Screenshot placeholder: Step 3 success screen with token amount and action buttons
+    </Note>
+
+    ### Next Actions
+
+    Users can:
+    - **Claim More Tokens**: Returns to Step 1 to enter another claim token
+    - **Back to Home**: Returns to the main website
+
+    **Location in code:** `src/app/claim/components/Step3.tsx:35`
+
+    <Info>
+      Users can verify the tokens in their wallet by checking their wallet app. The tokens should appear immediately or within a few seconds depending on blockchain confirmation time.
+    </Info>
+  </Step>
+</Steps>
+
+## User Experience Considerations
+
+### Mobile-First Design
+
+The claim flow is optimized for mobile devices because most users scan QR codes with their phones:
+
+- Large, touch-friendly buttons
+- Clear visual hierarchy
+- Minimal text entry required
+- Responsive layout adapts to screen size
+
+### Progressive Disclosure
+
+Information is revealed progressively to avoid overwhelming users:
+
+1. **Step 1**: Simple token entry
+2. **Step 2**: Campaign details and wallet connection
+3. **Step 3**: Success confirmation and next actions
+
+Users only see what's relevant to their current step.
+
+### Error Handling
+
+The system provides clear, actionable error messages:
+
+<AccordionGroup>
+  <Accordion title="Token Validation Errors">
+    - **Invalid token**: "The token you entered is not valid. Please check and try again."
+    - **Already used**: "This QR code has already been claimed. Each code can only be used once."
+    - **Expired campaign**: "This campaign has ended. Tokens are no longer available."
+  </Accordion>
+
+  <Accordion title="Wallet Connection Errors">
+    - **Wallet not installed**: "Please install [Wallet Name] to claim tokens."
+    - **Connection rejected**: "Wallet connection was rejected. Please try again."
+    - **Wrong network**: "Please switch to [Network Name] in your wallet."
+  </Accordion>
+
+  <Accordion title="Claim Transaction Errors">
+    - **Insufficient funds**: "Transaction failed due to insufficient funds for gas fees."
+    - **Transaction rejected**: "You rejected the transaction. Please try again."
+    - **Network error**: "Network connection error. Please check your internet and try again."
+  </Accordion>
+</AccordionGroup>
+
+## Technical Implementation
+
+### URL Structure
+
+Claim URLs follow this format:
+```
+https://your-domain.com/claim?token=UNIQUE_TOKEN_ID
+```
+
+When users arrive at this URL:
+1. The token is extracted from the query parameter
+2. It's automatically populated in the token input field
+3. Users can immediately validate without typing
+
+**Location in code:** `src/app/claim/components/Step1.tsx:23`
+
+### State Management
+
+The claim flow uses state to track:
+- Current step (1, 2, or 3)
+- Token validation status
+- Campaign data (name, symbol, tokens per claim)
+- Connected wallet address
+- Loading states
+
+### API Endpoints
+
+The claim process uses these backend endpoints:
+
+1. **POST /api/claim**: Validates claim token
+   - Input: `{ token: string }`
+   - Output: Campaign ID and validation result
+   
+   **Location in code:** `src/app/claim/components/Step1.tsx:37`
+
+2. **POST /api/fetch-claim-qr-details**: Fetches campaign information
+   - Input: Campaign ID
+   - Output: Campaign name, description, token details
+   
+   **Location in code:** `src/app/claim/components/Step2.tsx:38`
+
+3. **POST /api/claim/to-wallet**: Executes token transfer
+   - Input: `{ wallet, walletAddress, tokenId, uniqueId }`
+   - Output: Transaction confirmation
+   
+   **Location in code:** `src/app/claim/components/Step2.tsx:55`
+
+## Supporting Your Users
+
+### Pre-Claim Instructions
+
+Help users prepare before claiming:
+
+<CardGroup cols={2}>
+  <Card title="Install Wallet" icon="wallet">
+    Guide users to install a compatible wallet app before scanning QR codes. Recommend Phantom for Solana campaigns or MetaMask for Base campaigns.
+  </Card>
+
+  <Card title="Network Setup" icon="network-wired">
+    Ensure users have their wallet set to the correct network (Solana or Base) before claiming.
+  </Card>
+
+  <Card title="Gas Fees" icon="gas-pump">
+    Inform users they may need a small amount of cryptocurrency for transaction fees (typically < $0.01).
+  </Card>
+
+  <Card title="QR Code Access" icon="qrcode">
+    Provide clear instructions on where to find and how to scan QR codes at your location.
+  </Card>
+</CardGroup>
+
+### Troubleshooting Guide for Users
+
+<Tabs>
+  <Tab title="QR Code Won't Scan">
+    **Solutions:**
+    1. Use the manual token entry option
+    2. Ensure good lighting conditions
+    3. Hold phone steady and at appropriate distance
+    4. Try a different camera app
+    5. Clean camera lens
+  </Tab>
+
+  <Tab title="Wallet Won't Connect">
+    **Solutions:**
+    1. Ensure wallet app is installed and updated
+    2. Check internet connection
+    3. Try disconnecting and reconnecting
+    4. Clear browser cache
+    5. Try a different browser
+  </Tab>
+
+  <Tab title="Transaction Failed">
+    **Solutions:**
+    1. Verify wallet has small amount for gas fees
+    2. Check wallet is on correct network
+    3. Wait a moment and try again
+    4. Ensure campaign hasn't expired
+    5. Verify QR code hasn't been used
+  </Tab>
+
+  <Tab title="Tokens Not Appearing">
+    **Solutions:**
+    1. Wait 30-60 seconds for blockchain confirmation
+    2. Refresh wallet app
+    3. Verify correct wallet is connected
+    4. Check transaction on blockchain explorer
+    5. Ensure tokens are visible in wallet (may need to add token)
+  </Tab>
+</Tabs>
+
+## Best Practices for Campaign Owners
+
+### Clear Communication
+
+- Display wallet requirements prominently
+- Provide step-by-step instructions near QR codes
+- Include troubleshooting tips
+- Offer staff assistance if available
+
+### Testing
+
+- Test the complete flow with different wallets
+- Verify on both mobile and desktop
+- Test with various internet connection speeds
+- Try the manual token entry path
+
+### User Support
+
+- Provide contact information for help
+- Monitor common error patterns in analytics
+- Keep staff informed about the claim process
+- Have backup QR codes ready
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Admin Dashboard" icon="gauge" href="/guides/admin-dashboard">
+    Learn how to monitor claims and manage your campaigns from the dashboard.
+  </Card>
+
+  <Card title="Analytics" icon="chart-line" href="/guides/analytics">
+    Track claim rates, user engagement, and campaign performance metrics.
+  </Card>
+</CardGroup>

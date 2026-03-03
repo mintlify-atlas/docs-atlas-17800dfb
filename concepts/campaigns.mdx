@@ -1,0 +1,211 @@
+---
+title: "Campaigns"
+description: "Learn how to create and manage loyalty token campaigns on Stampchain"
+---
+
+## Overview
+
+Campaigns in Stampchain are blockchain-based loyalty programs that allow businesses to distribute custom SPL tokens to their customers. Each campaign creates a unique token with configurable parameters and distribution rules.
+
+## Campaign Lifecycle
+
+### 1. Campaign Creation
+
+When you create a campaign, Stampchain performs the following operations:
+
+1. **Token Mint Creation**: A new SPL token is created on Solana using the TOKEN_2022_PROGRAM_ID
+2. **Metadata Upload**: Token metadata (name, symbol, description, image) is uploaded to GitHub
+3. **Initial Supply Minting**: The total supply is minted to the creator's server wallet
+4. **Database Storage**: Campaign details are stored in the `token_mints` table
+
+<Info>
+All campaigns currently run on Solana Devnet for testing purposes.
+</Info>
+
+### 2. Campaign Configuration
+
+Campaigns require the following configuration parameters:
+
+```typescript
+{
+  name: string,              // Token name (e.g., "Coffee Loyalty Token")
+  tokenSymbol: string,       // Token symbol (e.g., "CLT")
+  blockchain: "solana",      // Currently only Solana is supported
+  description: string,       // Token description
+  decimals: string,          // Token decimals (default: 9)
+  totalSupply: string,       // Total token supply
+  maxClaimsPerWallet: string, // Max claims per user wallet
+  tokensPerClaim: string,    // Tokens distributed per claim
+  expirationDate?: string,   // Optional expiration date
+  metadataUri?: string       // Optional custom metadata URI
+}
+```
+
+<Tip>
+Set `totalSupply` based on your expected distribution: `totalSupply = maxClaimsPerWallet × tokensPerClaim × expectedUsers`
+</Tip>
+
+## Token Creation Process
+
+Here's what happens under the hood when you create a campaign:
+
+```typescript
+// 1. Create account for the mint
+const createAccountInstruction = SystemProgram.createAccount({
+  fromPubkey: keypair.publicKey,
+  newAccountPubkey: mintAuthority.publicKey,
+  space: mintLen,
+  lamports,
+  programId: TOKEN_2022_PROGRAM_ID,
+});
+
+// 2. Initialize metadata pointer
+const initializeMetadataPointerInstruction =
+  createInitializeMetadataPointerInstruction(
+    mintAuthority.publicKey,
+    keypair.publicKey,
+    mintAuthority.publicKey,
+    TOKEN_2022_PROGRAM_ID,
+  );
+
+// 3. Initialize the mint
+const initializeMintInstruction = createInitializeMintInstruction(
+  mintAuthority.publicKey,
+  Number(decimals),
+  mintAuthority.publicKey,
+  null,
+  TOKEN_2022_PROGRAM_ID,
+);
+
+// 4. Initialize metadata
+const initializeMetadataInstruction = createInitializeInstruction({
+  programId: TOKEN_2022_PROGRAM_ID,
+  metadata: mintAuthority.publicKey,
+  updateAuthority: keypair.publicKey,
+  mint: mintAuthority.publicKey,
+  mintAuthority: mintAuthority.publicKey,
+  name: metaData.name,
+  symbol: metaData.symbol,
+  uri: metaData.uri,
+});
+```
+
+## Token Metadata
+
+Stampchain uses Token-2022's metadata extension to store token information directly on-chain:
+
+```typescript
+const metadata = {
+  name: "Coffee Loyalty Token",
+  symbol: "CLT",
+  description: "Earn rewards with every coffee purchase",
+  image: "https://raw.githubusercontent.com/.../image.png",
+};
+
+const metaData: TokenMetadata = {
+  updateAuthority: keypair.publicKey,
+  mint: mintAuthority.publicKey,
+  name: name,
+  symbol: tokenSymbol,
+  uri: metadataUrl,
+  additionalMetadata: [["description", "Only Possible On Solana"]],
+};
+```
+
+<Note>
+Token metadata is uploaded to GitHub for decentralized storage and accessibility.
+</Note>
+
+## Supply Management
+
+The initial supply is calculated with proper decimal handling:
+
+```typescript
+const supplyBig = BigInt(String(totalSupply));
+const amountInBaseUnits = supplyBig * BigInt(10) ** BigInt(Number(decimals));
+
+const mintToIx = createMintToInstruction(
+  mintAuthority.publicKey,
+  serverAta,
+  mintAuthority.publicKey,
+  Number(amountInBaseUnits),
+  [],
+  TOKEN_2022_PROGRAM_ID
+);
+```
+
+For example, with 9 decimals:
+- 1000 tokens = 1,000,000,000,000 base units
+- This ensures precise fractional token amounts
+
+## Campaign Constraints
+
+### Max Claims Per Wallet
+
+Controls how many times a single wallet can claim tokens from your campaign:
+
+```typescript
+maxClaimsPerWallet: "5" // Users can claim up to 5 times
+```
+
+### Tokens Per Claim
+
+Defines how many tokens are distributed in each claim:
+
+```typescript
+tokensPerClaim: "10" // Users receive 10 tokens per claim
+```
+
+<Info>
+These constraints are enforced at the database level through the QR code validation system.
+</Info>
+
+## Campaign Expiry
+
+While the validation schema includes an optional `expirationDate` field, expiry enforcement is currently handled at the application level:
+
+```typescript
+expirationDate?: z.string().optional()
+```
+
+To implement expiry checks, query the campaign creation date and compare against the expiration date before allowing claims.
+
+## Database Schema
+
+Campaigns are stored in the `token_mints` table:
+
+```sql
+CREATE TABLE token_mints (
+  id UUID PRIMARY KEY,
+  mint_address TEXT NOT NULL,
+  mint_secret_key INTEGER[],
+  creator_email TEXT,
+  decimals INTEGER,
+  name TEXT,
+  description TEXT,
+  symbol TEXT,
+  initial_supply TEXT,
+  maxclaimsperwallet INTEGER,
+  tokensperclaim INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## Best Practices
+
+1. **Calculate Supply Carefully**: Ensure your total supply can cover all expected claims
+2. **Set Reasonable Limits**: Use `maxClaimsPerWallet` to prevent abuse
+3. **Test on Devnet**: Always test your campaign configuration before mainnet deployment
+4. **Upload Quality Images**: Token images are permanent and represent your brand
+5. **Monitor Supply**: Track remaining tokens to avoid failed claims
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="QR Codes" icon="qrcode" href="/concepts/qr-codes">
+    Generate unique QR codes for token distribution
+  </Card>
+  <Card title="Tokens" icon="coins" href="/concepts/tokens">
+    Learn about SPL tokens and metadata
+  </Card>
+</CardGroup>

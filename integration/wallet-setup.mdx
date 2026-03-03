@@ -1,0 +1,302 @@
+---
+title: "Wallet Setup"
+description: "Learn how to set up server-side Solana wallets, generate keypairs, and manage blockchain connections"
+---
+
+## Overview
+
+Stampchain uses server-side Solana wallets to manage token minting and distribution. Each user gets a dedicated server wallet that acts as the mint authority for their loyalty token campaigns.
+
+## Solana Connection
+
+The application connects to Solana's **devnet** cluster for development and testing:
+
+```typescript
+import { Connection, clusterApiUrl } from "@solana/web3.js";
+
+const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+```
+
+<Note>
+The connection uses the `confirmed` commitment level, which provides a good balance between speed and finality for most operations.
+</Note>
+
+## Keypair Generation
+
+### User Account Creation
+
+When a new user creates an account, a Solana keypair is automatically generated and stored in the database:
+
+```typescript
+import { Keypair } from "@solana/web3.js";
+
+const mintAuthority = Keypair.generate();
+const server_wallet = mintAuthority.publicKey.toString();
+const server_key = mintAuthority.secretKey;
+
+// Store in database
+const { error } = await supabase
+  .from('users')
+  .insert([{ email, server_wallet, server_key }])
+  .select()
+  .single()
+```
+
+The keypair consists of:
+- **Public Key** (`server_wallet`): The wallet's public address stored as a base58 string
+- **Secret Key** (`server_key`): The private key stored as a byte array
+
+<Warning>
+Secret keys are stored in the database as raw byte arrays. In a production environment, these should be encrypted at rest and potentially stored in a secure key management system like AWS KMS or HashiCorp Vault.
+</Warning>
+
+### Campaign Token Mint Authority
+
+When creating a new loyalty token campaign, a separate keypair is generated specifically for that token mint:
+
+```typescript
+const mintAuthority = Keypair.generate();
+
+// Used to create the token mint account
+const createAccountInstruction = SystemProgram.createAccount({
+  fromPubkey: keypair.publicKey,
+  newAccountPubkey: mintAuthority.publicKey,
+  space: mintLen,
+  lamports,
+  programId: TOKEN_2022_PROGRAM_ID,
+});
+```
+
+This mint authority keypair is also stored in the `token_mints` table for future token operations.
+
+## Secret Key Conversion
+
+The secret key stored in the database is a comma-separated string of integers. To use it for signing transactions, it must be converted back to a Keypair:
+
+```typescript
+import { Keypair } from "@solana/web3.js";
+
+export const convertStringToSecretKey = (server_text: string): Keypair => {
+  const secretArray = server_text.split(",").map((num) => parseInt(num.trim()));
+  const secretKey = new Uint8Array(secretArray);
+  const keypair = Keypair.fromSecretKey(secretKey);
+  return keypair;
+}
+```
+
+**Usage in API routes:**
+
+```typescript
+const { data: getServerWalletData } = await supabase
+  .from('users')
+  .select('server_wallet, server_key')
+  .eq('email', session.user?.email)
+  .maybeSingle()
+
+const keypair = convertStringToSecretKey(getServerWalletData?.server_key)
+```
+
+## Token Program (SPL Token 2022)
+
+Stampchain uses the **SPL Token 2022** program (Token Extensions) instead of the legacy Token Program:
+
+```typescript
+import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+```
+
+### Why Token 2022?
+
+Token 2022 provides advanced features including:
+- **Metadata Pointer Extension**: Attach metadata directly to the mint account
+- **Transfer Hooks**: Enable custom logic during token transfers
+- **Confidential Transfers**: Privacy-preserving token transfers
+- **Token Metadata**: Built-in support for name, symbol, and URI
+
+## Creating a Token Mint
+
+The complete flow for creating a loyalty token involves multiple instructions:
+
+```typescript
+import {
+  TOKEN_2022_PROGRAM_ID,
+  createInitializeMintInstruction,
+  getMintLen,
+  createInitializeMetadataPointerInstruction,
+  ExtensionType
+} from "@solana/spl-token";
+import { SystemProgram, Transaction } from "@solana/web3.js";
+
+// 1. Calculate space needed for mint account
+const mintLen = getMintLen([ExtensionType.MetadataPointer]);
+const lamports = await connection.getMinimumBalanceForRentExemption(
+  mintLen + metadataExtension + metadataLen
+);
+
+// 2. Create the mint account
+const createAccountInstruction = SystemProgram.createAccount({
+  fromPubkey: keypair.publicKey,
+  newAccountPubkey: mintAuthority.publicKey,
+  space: mintLen,
+  lamports,
+  programId: TOKEN_2022_PROGRAM_ID,
+});
+
+// 3. Initialize metadata pointer
+const initializeMetadataPointerInstruction =
+  createInitializeMetadataPointerInstruction(
+    mintAuthority.publicKey,
+    keypair.publicKey,
+    mintAuthority.publicKey,
+    TOKEN_2022_PROGRAM_ID,
+  );
+
+// 4. Initialize the mint
+const initializeMintInstruction = createInitializeMintInstruction(
+  mintAuthority.publicKey,
+  Number(decimals),
+  mintAuthority.publicKey,
+  null,
+  TOKEN_2022_PROGRAM_ID,
+);
+
+// 5. Add all instructions to transaction
+const transaction = new Transaction().add(
+  createAccountInstruction,
+  initializeMetadataPointerInstruction,
+  initializeMintInstruction,
+  initializeMetadataInstruction,
+  updateFieldInstruction,
+);
+
+// 6. Sign and send transaction
+const transactionSignature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [keypair, mintAuthority],
+);
+```
+
+## Token Metadata
+
+Token metadata is defined using the SPL Token Metadata standard:
+
+```typescript
+import { TokenMetadata, pack } from "@solana/spl-token-metadata";
+
+const metaData: TokenMetadata = {
+  updateAuthority: keypair.publicKey,
+  mint: mintAuthority.publicKey,
+  name: name,
+  symbol: tokenSymbol,
+  uri: metadataUrl,
+  additionalMetadata: [["description", "Only Possible On Solana"]],
+};
+```
+
+Metadata includes:
+- **name**: Token display name
+- **symbol**: Token ticker symbol
+- **uri**: URL to off-chain metadata JSON
+- **additionalMetadata**: Key-value pairs for extra information
+
+## Minting Initial Supply
+
+After creating the mint, tokens are minted to the server's associated token account:
+
+```typescript
+import {
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  createMintToInstruction,
+  TOKEN_2022_PROGRAM_ID
+} from "@solana/spl-token";
+
+// 1. Get server's ATA address
+const serverAta = await getAssociatedTokenAddress(
+  mintAuthority.publicKey,
+  keypair.publicKey,
+  false,
+  TOKEN_2022_PROGRAM_ID
+);
+
+// 2. Create ATA instruction
+const createServerAtaIx = createAssociatedTokenAccountInstruction(
+  keypair.publicKey,
+  serverAta,
+  keypair.publicKey,
+  mintAuthority.publicKey,
+  TOKEN_2022_PROGRAM_ID
+);
+
+// 3. Calculate amount with decimals
+const supplyBig = BigInt(String(totalSupply));
+const amountInBaseUnits = supplyBig * BigInt(10) ** BigInt(Number(decimals));
+
+// 4. Mint to ATA
+const mintToIx = createMintToInstruction(
+  mintAuthority.publicKey,
+  serverAta,
+  mintAuthority.publicKey,
+  Number(amountInBaseUnits),
+  [],
+  TOKEN_2022_PROGRAM_ID
+);
+
+// 5. Send transaction
+const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+const tx2 = new Transaction({
+  feePayer: keypair.publicKey,
+  blockhash,
+  lastValidBlockHeight,
+}).add(createServerAtaIx, mintToIx);
+
+const signature = await sendAndConfirmTransaction(
+  connection,
+  tx2,
+  [keypair, mintAuthority]
+);
+```
+
+## Wallet Retrieval
+
+To retrieve a user's server wallet address:
+
+```typescript
+const { data } = await supabase
+  .from('users')
+  .select('server_wallet')
+  .eq('email', email)
+  .maybeSingle()
+
+const walletAddress = data?.server_wallet;
+```
+
+## Transaction Signing
+
+All blockchain transactions require signing with the appropriate keypairs:
+
+1. **Server Wallet**: Signs as the fee payer and transaction initiator
+2. **Mint Authority**: Signs when creating or minting tokens
+
+```typescript
+const signature = await sendAndConfirmTransaction(
+  connection,
+  transaction,
+  [keypair, mintAuthority], // Array of signers
+);
+```
+
+## Best Practices
+
+<Warning>
+- **Never expose secret keys** to the client-side or in API responses
+- **Use environment variables** for sensitive configuration
+- **Implement proper error handling** for blockchain operations
+- **Monitor transaction fees** and ensure wallets have sufficient SOL
+- **Test on devnet** before deploying to mainnet
+</Warning>
+
+## Next Steps
+
+- [Authentication](/integration/authentication) - Learn about user authentication
+- [Database Schema](/integration/database-schema) - Understand how wallet data is stored

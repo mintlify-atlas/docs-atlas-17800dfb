@@ -1,0 +1,190 @@
+---
+title: Creating Campaigns
+description: Step-by-step guide to creating and launching loyalty campaigns on Stampchain
+---
+
+Learn how to create and configure a loyalty campaign on Stampchain. This guide covers all the form fields and configuration options available when setting up your blockchain-powered loyalty program.
+
+## Overview
+
+Stampchain campaigns allow you to create blockchain-based loyalty programs where customers can collect tokens by scanning QR codes. Each campaign has its own token economics, distribution rules, and expiration settings.
+
+<Steps>
+  <Step title="Navigate to Campaign Creation">
+    From your admin dashboard, click the "New Campaign" button or navigate to `/admin/campaign/new` to access the campaign creation form.
+    
+    The campaign creation interface is divided into three main sections: Campaign Details, Token Configuration, and Security & Limits.
+  </Step>
+
+  <Step title="Configure Campaign Details">
+    The first section collects basic information about your loyalty program:
+
+    ### Campaign Name (Required)
+    Enter a descriptive name for your campaign, such as "Coffee Shop Loyalty Program" or "YouTube Subscriber Rewards". This name will be visible to users when they claim tokens.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/campaign-form.tsx:31`
+
+    ### Token Symbol (Required)
+    Create a short symbol for your tokens (maximum 10 characters). For example:
+    - `COFFEE` for a coffee shop
+    - `YT` for YouTube rewards
+    - `STAMP` for a general loyalty program
+
+    The symbol is automatically converted to uppercase.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/campaign-form.tsx:41`
+
+    ### Token Image (Required)
+    Upload an image that represents your token. This will be displayed to users during the claim process. Accepted formats include PNG, JPG, and other standard image formats.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/campaign-form.tsx:54`
+
+    ### Description (Optional)
+    Provide a description of your loyalty program. Explain what tokens can be used for and any special benefits. This helps users understand the value proposition of participating in your program.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/campaign-form.tsx:67`
+
+    <Note>
+      Screenshot placeholder: Campaign Details form with all fields filled out
+    </Note>
+  </Step>
+
+  <Step title="Set Token Configuration">
+    Configure the token economics for your campaign:
+
+    ### Total Token Supply (Required)
+    Set the maximum number of tokens that will be created for this campaign. For example, `10000` tokens. Once this supply is exhausted, no more tokens can be distributed.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/token-form.tsx:31`
+
+    ### Tokens per Claim (Required)
+    Specify how many tokens users receive each time they scan a QR code. Common values are `5`, `10`, or `25` tokens per claim.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/token-form.tsx:42`
+
+    ### Max Claims per Wallet (Optional)
+    Limit how many times a single wallet can claim tokens. This helps prevent abuse. For example, setting this to `5` means each user can claim tokens up to 5 times. Leave empty for unlimited claims.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/token-form.tsx:53`
+
+    ### Blockchain Network (Required)
+    Select the blockchain where your tokens will be deployed:
+    - **Solana (SPL)**: Fast and low-cost transactions
+    - **Base (ERC-20)**: Ethereum Layer 2 network
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/token-form.tsx:64`
+
+    <Note>
+      Screenshot placeholder: Token Configuration section showing all fields
+    </Note>
+  </Step>
+
+  <Step title="Configure Security & Limits">
+    Set up fraud prevention and campaign expiration:
+
+    ### Campaign Expiration (Optional)
+    Toggle the "Campaign Expiration" switch to enable a time limit for your campaign. When enabled, users will not be able to claim tokens after the specified date.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/expiry-form.tsx:34`
+
+    ### Expiration Date
+    If expiration is enabled, select the date when the campaign should end. After this date, QR codes will no longer be valid for claiming tokens.
+
+    **Location in code:** `src/app/(protected-route)/admin/campaign/new/components/expiry-form.tsx:43`
+
+    <Warning>
+      Once a campaign expires, users cannot claim tokens even if QR codes are still available. Plan your expiration date carefully.
+    </Warning>
+
+    <Note>
+      Screenshot placeholder: Security & Limits section with expiration enabled
+    </Note>
+  </Step>
+
+  <Step title="Preview and Submit">
+    Before submitting, review your campaign configuration in the preview panel on the right side of the screen. This shows how your campaign will appear to users.
+
+    Once you're satisfied with all settings, click the "Create Campaign" button to deploy your tokens to the blockchain and create your campaign.
+
+    <Info>
+      Campaign creation involves deploying a smart contract to the blockchain, which may take a few moments. You'll be redirected to the success page once the deployment is complete.
+    </Info>
+  </Step>
+
+  <Step title="Campaign Created Successfully">
+    After successful creation, you'll be redirected to the campaign success page where you can:
+    - View your campaign summary
+    - Generate QR codes for token distribution
+    - Access campaign management tools
+
+    See the [Generating QR Codes](/guides/generating-qr-codes) guide for next steps.
+  </Step>
+</Steps>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Token Supply Planning" icon="calculator">
+    Calculate your total supply based on expected participants and claims per user. For example: 200 users × 5 claims × 10 tokens = 10,000 total supply.
+  </Card>
+
+  <Card title="Meaningful Symbols" icon="tag">
+    Choose token symbols that are memorable and related to your brand. Short, uppercase symbols work best (e.g., COFFEE, SHOP, REWARDS).
+  </Card>
+
+  <Card title="Clear Descriptions" icon="file-text">
+    Write descriptions that clearly explain the benefits and use cases for your tokens. This increases user engagement and participation.
+  </Card>
+
+  <Card title="Expiration Strategy" icon="clock">
+    Use expiration dates for time-limited promotions or seasonal campaigns. For ongoing programs, leave expiration disabled.
+  </Card>
+</CardGroup>
+
+## Example Campaign Configurations
+
+### Coffee Shop Loyalty Program
+```yaml
+Campaign Name: Coffee Shop Loyalty Program
+Token Symbol: COFFEE
+Total Supply: 10000
+Tokens per Claim: 10
+Max Claims per Wallet: 5
+Blockchain: Solana
+Expiration: Enabled (December 31, 2024)
+```
+
+### YouTube Subscriber Rewards
+```yaml
+Campaign Name: YouTube Subscriber Rewards
+Token Symbol: YT
+Total Supply: 5000
+Tokens per Claim: 5
+Max Claims per Wallet: 3
+Blockchain: Base
+Expiration: Disabled
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Campaign creation is taking too long">
+    Blockchain deployment can take 30-60 seconds depending on network congestion. If it takes longer than 2 minutes, check your wallet connection and try again.
+  </Accordion>
+
+  <Accordion title="Token symbol already exists">
+    Each token symbol must be unique within your account. Choose a different symbol or add numbers/letters to make it unique (e.g., COFFEE2).
+  </Accordion>
+
+  <Accordion title="Image upload fails">
+    Ensure your image is under 5MB and in a supported format (PNG, JPG, GIF). Try compressing the image if it's too large.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+After creating your campaign:
+
+1. [Generate QR Codes](/guides/generating-qr-codes) for distribution to customers
+2. [Monitor Analytics](/guides/analytics) to track campaign performance
+3. [Use the Admin Dashboard](/guides/admin-dashboard) to manage your campaigns

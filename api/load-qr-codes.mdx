@@ -1,0 +1,122 @@
+---
+title: "Load QR Codes"
+description: "Retrieve all QR codes associated with a specific campaign"
+---
+
+## POST /api/load-qr-codes
+
+Retrieves all QR codes that have been generated for a specific campaign. Returns comprehensive information including unique codes, claim URLs, and usage status.
+
+### Authentication
+
+This endpoint requires authentication via NextAuth session. Users must be logged in to load QR codes.
+
+### Request Body
+
+<ParamField body="id" type="string" required>
+  The campaign ID (campaign_id) to retrieve QR codes for. This should match the campaign_id used when creating the QR codes.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates whether the request was successful.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of QR code objects associated with the campaign, each containing:
+  
+  <ResponseField name="id" type="string">
+    The unique code identifier (UUID v4).
+  </ResponseField>
+  
+  <ResponseField name="url" type="string">
+    The full claim URL for this QR code.
+  </ResponseField>
+  
+  <ResponseField name="token" type="string">
+    The unique code token (same as id, provided for convenience).
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the request failed, or `false` if successful.
+</ResponseField>
+
+### Database Query Details
+
+The endpoint queries the `qr_codes` table and returns all fields:
+- `id`: Database primary key
+- `campaign_id`: Associated campaign identifier
+- `unique_code`: The UUID v4 unique identifier
+- `used`: Boolean indicating if the code has been claimed
+- `claimed_at`: Timestamp when claimed (null if unused)
+- `created_at`: Timestamp when the code was created
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/load-qr-codes \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=your-session-token" \
+  -d '{
+    "id": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "error": false,
+  "data": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "url": "https://your-domain.com/claim/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "token": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "url": "https://your-domain.com/claim/b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "token": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+    },
+    {
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "url": "https://your-domain.com/claim/c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "token": "c3d4e5f6-a7b8-9012-cdef-123456789012"
+    }
+  ]
+}
+```
+
+### Error Responses
+
+**Unauthorized (No Session)**
+```json
+{
+  "success": false,
+  "error": "You have to log in",
+  "data": null
+}
+```
+
+**Database Error**
+```json
+{
+  "success": false,
+  "error": "Database query failed",
+  "data": null
+}
+```
+
+**Empty Result**
+
+If no QR codes exist for the campaign, the endpoint returns:
+```json
+{
+  "success": true,
+  "error": false,
+  "data": []
+}
+```

@@ -1,0 +1,83 @@
+---
+title: 'Get Wallet'
+description: 'Retrieve the Solana wallet address for the authenticated user'
+---
+
+## GET /api/get-wallet
+
+Retrieves the server-side Solana wallet address associated with the authenticated user's account. This wallet is automatically generated when the user account is created and is used for token minting operations.
+
+### Authentication
+
+Requires a valid session obtained through NextAuth authentication. The endpoint uses `getServerSession()` to verify the user's identity.
+
+### Request Parameters
+
+No parameters required.
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the request was successful.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Contains the wallet information.
+  
+  <ResponseField name="data.server_wallet" type="string">
+    The Solana wallet public key (address) associated with the user's account.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the request failed, or `false` if successful.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://your-domain.com/api/get-wallet \
+  -H "Cookie: next-auth.session-token=your-session-token"
+```
+
+### Example Response (Success)
+
+```json
+{
+  "success": true,
+  "error": false,
+  "data": {
+    "server_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+  }
+}
+```
+
+### Example Response (Not Authenticated)
+
+```json
+{
+  "success": false,
+  "error": "You have to log in to use this service",
+  "data": null
+}
+```
+
+### Example Response (Database Error)
+
+```json
+{
+  "success": false,
+  "error": "Database error message",
+  "data": null
+}
+```
+
+### Implementation Details
+
+The endpoint:
+1. Verifies the user has an active session using NextAuth
+2. Extracts the user's email from the session
+3. Queries the database for the user's server wallet address
+4. Returns the wallet public key if found
+
+This wallet address represents the user's server-side Solana wallet that was generated during account creation. It is used for signing transactions and managing tokens on behalf of the user.

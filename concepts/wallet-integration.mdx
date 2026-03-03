@@ -1,0 +1,551 @@
+---
+title: "Wallet Integration"
+description: "Learn how Stampchain integrates with Solana wallets like Phantom and WalletConnect"
+---
+
+## Overview
+
+Stampchain uses the Solana Wallet Adapter to enable seamless wallet connections for token claiming. Users can connect with popular wallets like Phantom and WalletConnect to receive their loyalty tokens.
+
+## Supported Wallets
+
+Stampchain currently supports:
+
+- **Phantom**: The most popular Solana wallet
+- **WalletConnect**: Universal wallet connection protocol
+- **Auto-detection**: Any wallet with Solana Wallet Adapter support
+
+<Info>
+The wallet adapter automatically detects installed wallet extensions in the user's browser.
+</Info>
+
+## Wallet Adapter Setup
+
+### Provider Configuration
+
+Stampchain wraps the application with Solana wallet providers:
+
+```typescript
+import React, { useMemo } from "react";
+import {
+  ConnectionProvider,
+  WalletProvider
+} from "@solana/wallet-adapter-react";
+import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { clusterApiUrl } from "@solana/web3.js";
+import {
+  PhantomWalletAdapter,
+  WalletConnectWalletAdapter
+} from '@solana/wallet-adapter-wallets';
+import "@solana/wallet-adapter-react-ui/styles.css";
+
+const SolanaWallet = ({ children }) => {
+  const network = WalletAdapterNetwork.Devnet;
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  
+  const wallets = [
+    new PhantomWalletAdapter(),
+    new WalletConnectWalletAdapter({
+      network: network,
+      options: {
+        relayUrl: 'wss://relay.walletconnect.com',
+        projectId: 'YOUR_PROJECT_ID',
+        metadata: {
+          name: 'Stampchain',
+          description: 'Blockchain-powered loyalty platform',
+          url: 'https://yourapp.com',
+          icons: ['https://yourapp.com/icon.png']
+        }
+      }
+    })
+  ];
+  
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          {children}
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+};
+```
+
+<Note>
+The `autoConnect` prop automatically reconnects previously connected wallets when users return to the app.
+</Note>
+
+### Network Configuration
+
+```typescript
+const network = WalletAdapterNetwork.Devnet;
+const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+```
+
+Stampchain currently uses Solana Devnet for testing. For production:
+
+```typescript
+const network = WalletAdapterNetwork.Mainnet;
+const endpoint = process.env.NEXT_PUBLIC_SOLANA_RPC || clusterApiUrl(network);
+```
+
+## Wallet Connection UI
+
+### Connect Wallet Component
+
+Stampchain provides a custom wallet connection modal:
+
+```typescript
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletName } from "@solana/wallet-adapter-base";
+
+const WalletModal = () => {
+  const { wallets, connect, select, connected } = useWallet();
+  const [stateWallet, setStateWallet] = useState([]);
+  
+  useEffect(() => {
+    const wallets = providerWallets.map(wallet => ({
+      name: wallet.adapter.name,
+      icon: wallet.adapter.icon,
+      installed: wallet.readyState.toString() === "Installed",
+      installUrl: wallet.adapter.url
+    }));
+    setStateWallet(wallets);
+  }, [providerWallets, connected]);
+  
+  const handleClickWallet = async (name: string) => {
+    try {
+      select(name as WalletName);
+      await connect();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button>Connect Wallet</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Choose a wallet to connect to this application
+          </p>
+          <div className="space-y-2">
+            {stateWallet.map((wallet) => (
+              <Button
+                key={wallet.name}
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => handleClickWallet(wallet.name)}
+              >
+                <div className="flex items-center gap-3">
+                  <img
+                    className="size-[32px]"
+                    src={wallet.icon}
+                    alt={`${wallet.name} wallet`}
+                  />
+                  <div className="text-left">
+                    <div className="font-medium">{wallet.name}</div>
+                    {!wallet.installed && wallet.installUrl && (
+                      <div className="text-xs text-muted-foreground">
+                        Click to install
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+```
+
+### Wallet Detection
+
+The adapter automatically detects installed wallets:
+
+```typescript
+interface WalletItem {
+  name: string;
+  icon: string;
+  installed: boolean;  // true if browser extension is installed
+  installUrl?: string; // link to install wallet
+}
+
+const wallets = providerWallets.map(wallet => ({
+  name: wallet.adapter.name,
+  icon: wallet.adapter.icon,
+  installed: wallet.readyState.toString() === "Installed",
+  installUrl: wallet.adapter.url
+}));
+```
+
+<Tip>
+If a wallet isn't installed, clicking it redirects users to the wallet's installation page.
+</Tip>
+
+## Wallet State Management
+
+### Zustand Store
+
+Stampchain uses Zustand to manage wallet state:
+
+```typescript
+import { create } from 'zustand';
+
+interface WalletStore {
+  wallet: any | null;
+  walletAddress: string | null;
+  setWallet: (wallet: any) => void;
+  setWalletAddress: (address: string | null) => void;
+}
+
+export const useWalletStore = create<WalletStore>((set) => ({
+  wallet: null,
+  walletAddress: null,
+  setWallet: (wallet) => set({ wallet }),
+  setWalletAddress: (address) => set({ walletAddress: address }),
+}));
+```
+
+### Helper Functions Context
+
+A context provider syncs wallet state:
+
+```typescript
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletStore } from '@/stores/walletStore';
+
+const SolanaHelperFunctions = () => {
+  const { wallet, publicKey, connected } = useWallet();
+  const { setWallet, setWalletAddress } = useWalletStore();
+  
+  useEffect(() => {
+    if (connected && publicKey) {
+      setWallet(wallet);
+      setWalletAddress(publicKey.toBase58());
+    } else {
+      setWallet(null);
+      setWalletAddress(null);
+    }
+  }, [connected, publicKey, wallet]);
+  
+  return null;
+};
+```
+
+## Claiming Tokens
+
+### Claim Flow with Wallet
+
+1. **User Scans QR Code**: Opens claim page with unique token
+2. **Validate Token**: Verify QR code is unused and valid
+3. **Connect Wallet**: User connects their Solana wallet
+4. **Display Reward**: Show token amount and details
+5. **Claim**: Transfer tokens to connected wallet
+
+### Claim Component
+
+```typescript
+const Step2 = () => {
+  const { claimData, id, uniqueId, setStep } = useClaimStore();
+  const { wallet, walletAddress } = useWalletStore();
+  const { setIsLoading, loading: isLoading } = useLoadingStore();
+  
+  const walletConnected = wallet ? true : false;
+  
+  const handleClaim = async () => {
+    setIsLoading(true);
+    
+    try {
+      const api = await fetch('/api/claim/to-wallet', {
+        method: 'POST',
+        body: JSON.stringify({
+          wallet: 'solana',
+          walletAddress,
+          tokenId: id,
+          uniqueId: uniqueId
+        })
+      });
+      
+      const response = await api.json();
+      
+      if (!response.success && typeof response.error === 'string') {
+        toast.error(response.error);
+        return;
+      }
+      
+      setStep(3);  // Success step
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Connect Your Wallet</CardTitle>
+          <CardDescription>
+            Connect your crypto wallet to receive your loyalty tokens
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              Wallet connected: {formatAddress(walletAddress)}
+            </AlertDescription>
+          </Alert>
+          <ConnectWallet className="w-full" />
+          <Button
+            onClick={handleClaim}
+            className="w-full"
+            disabled={isLoading || !wallet || !walletAddress || !claimData}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Claiming Tokens...
+              </>
+            ) : (
+              <>
+                Claim {claimData?.tokensPerClaim} {claimData?.tokenSymbol}
+                <Coins className="w-4 h-4 ml-2" />
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+```
+
+<Info>
+The claim button is disabled until the wallet is connected and claim data is loaded.
+</Info>
+
+## Token Transfer to Wallet
+
+### Server-Side Transfer
+
+Tokens are transferred on the server after wallet connection:
+
+```typescript
+import {
+  getOrCreateAssociatedTokenAccount,
+  TOKEN_2022_PROGRAM_ID,
+  transfer
+} from "@solana/spl-token";
+import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
+
+export const POST = async (req: NextRequest) => {
+  const { tokenId, walletAddress, uniqueId } = await req.json();
+  
+  // Validate QR code
+  const qrCodesValid = await isQRCodeValid(uniqueId);
+  if (!qrCodesValid.success) {
+    return NextResponse.json({
+      success: false,
+      error: qrCodesValid.errorMessage
+    });
+  }
+  
+  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+  const recipient = new PublicKey(walletAddress);
+  const tokenMint = new PublicKey(tokenData.mint_address);
+  
+  // Get server's token account
+  const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    sender,
+    tokenMint,
+    sender.publicKey,
+    false,
+    "confirmed",
+    undefined,
+    TOKEN_2022_PROGRAM_ID
+  );
+  
+  // Get or create recipient's token account
+  const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    sender,
+    tokenMint,
+    recipient,
+    false,
+    "confirmed",
+    undefined,
+    TOKEN_2022_PROGRAM_ID
+  );
+  
+  // Calculate amount with decimals
+  const amount = Number(tokenData.tokensperclaim) * 10 ** 9;
+  
+  // Transfer tokens
+  await transfer(
+    connection,
+    sender,
+    senderTokenAccount.address,
+    recipientTokenAccount.address,
+    sender.publicKey,
+    amount,
+    [],
+    undefined,
+    TOKEN_2022_PROGRAM_ID
+  );
+  
+  // Mark QR code as used
+  await supabase
+    .from('qr_codes')
+    .update({ used: true, claimed_at: new Date().toISOString() })
+    .eq('unique_code', uniqueId);
+  
+  return NextResponse.json({
+    success: true,
+    error: false,
+    data: 'Tokens claimed successfully'
+  });
+};
+```
+
+<Note>
+The server handles token transfers so users don't need SOL for transaction fees. The campaign creator pays all fees.
+</Note>
+
+## Associated Token Accounts
+
+### Automatic ATA Creation
+
+Stampchain automatically creates ATAs for recipients:
+
+```typescript
+const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+  connection,
+  sender,           // Fee payer (server wallet)
+  tokenMint,        // Token mint address
+  recipient,        // Recipient's wallet
+  false,            // Allow owner off curve
+  "confirmed",      // Commitment level
+  undefined,        // Confirmation strategy
+  TOKEN_2022_PROGRAM_ID
+);
+```
+
+This function:
+1. Derives the ATA address for the recipient and token
+2. Checks if the ATA exists on-chain
+3. Creates the ATA if it doesn't exist (server pays rent)
+4. Returns the ATA address
+
+<Warning>
+Creating ATAs costs rent (approximately 0.002 SOL per ATA). This cost is paid by the campaign creator's server wallet.
+</Warning>
+
+## Wallet Utilities
+
+### Format Address
+
+Display wallet addresses in a user-friendly format:
+
+```typescript
+export const formatAddress = (address: string | null): string => {
+  if (!address) return '';
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+};
+
+// Example: "7xK9...3mP2"
+```
+
+### Disconnect Wallet
+
+```typescript
+const handleDisconnectWallet = async () => {
+  await disconnect();
+  setWalletAddress(null);
+};
+```
+
+## Wallet Connection Best Practices
+
+1. **Auto-Connect**: Enable `autoConnect` for better UX
+2. **Error Handling**: Handle wallet rejection gracefully
+3. **Loading States**: Show clear loading indicators during connection
+4. **Mobile Support**: Test on mobile browsers with wallet apps
+5. **Clear CTAs**: Make it obvious when users need to connect
+
+## Security Considerations
+
+<Warning>
+Never request users to sign transactions for claiming. Stampchain handles all blockchain operations server-side.
+</Warning>
+
+- **No Transaction Signing**: Users only connect wallets, no signing required
+- **Server-Side Transfers**: All token transfers happen on the backend
+- **Wallet Privacy**: Only the wallet address is shared with the server
+- **No Private Keys**: Users' private keys never leave their wallet
+
+## Common Issues
+
+### Wallet Not Detected
+
+**Problem**: Wallet extension is installed but not detected
+
+**Solution**:
+- Refresh the page
+- Ensure wallet extension is enabled
+- Try a different browser
+- Check if wallet supports Solana
+
+### Connection Rejected
+
+**Problem**: User rejects connection in wallet popup
+
+**Solution**:
+- Show clear error message
+- Explain why wallet connection is needed
+- Allow user to retry connection
+
+### Token Not Appearing
+
+**Problem**: Tokens transferred but not visible in wallet
+
+**Solution**:
+- Wait for transaction confirmation (up to 30 seconds)
+- Manually add token by mint address in wallet settings
+- Check transaction on Solana Explorer
+- Ensure wallet supports Token-2022
+
+## Testing Wallets
+
+For development and testing:
+
+1. **Install Phantom**: Get the browser extension
+2. **Switch to Devnet**: Change network in wallet settings
+3. **Get Test SOL**: Use Solana faucet for devnet SOL
+4. **Test Claim Flow**: Scan test QR code and claim tokens
+
+```
+Devnet Faucet: https://faucet.solana.com/
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="QR Codes" icon="qrcode" href="/concepts/qr-codes">
+    Learn how QR codes enable token distribution
+  </Card>
+  <Card title="Tokens" icon="coins" href="/concepts/tokens">
+    Understand SPL tokens and how they work
+  </Card>
+</CardGroup>

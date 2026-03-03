@@ -1,80 +1,192 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart guide
+description: Create your first loyalty campaign and start rewarding customers in under 5 minutes
 ---
 
-## Get started in three steps
+# Get started with Stampchain
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through creating your first loyalty campaign, from account setup to distributing your first tokens.
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Create your account">
+    Navigate to the Stampchain platform and sign in with your preferred wallet provider.
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Note>
+      Stampchain supports Phantom, WalletConnect, and other popular wallet providers.
+    </Note>
+  </Step>
 
-### Step 2: Deploy your changes
+  <Step title="Access the admin dashboard">
+    Once logged in, navigate to `/admin` to access your dashboard. Here you'll see:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    - **Campaigns tab** - View and manage all your loyalty campaigns
+    - **Analytics tab** - Track claims and monitor campaign performance
+    - **Settings tab** - Configure your account preferences
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    The dashboard displays key metrics including total campaigns, total claims, and active campaigns.
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Create your first campaign">
+    Click the "Create Campaign" button to start building your loyalty program.
 
-### Step 3: Go live
+    ### Campaign details
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    Fill out the basic information about your campaign:
+
+    ```typescript
+    {
+      name: "Coffee Shop Loyalty Program",
+      tokenSymbol: "COFFEE",
+      description: "Earn COFFEE tokens with every purchase",
+      blockchain: "solana" // or "ethereum"
+    }
+    ```
+
+    <Info>
+      Token symbols are limited to 10 characters and will be automatically converted to uppercase.
+    </Info>
+
+    ### Token configuration
+
+    Set up your token economics:
+
+    - **Total supply** - Maximum number of tokens that will ever exist
+    - **Tokens per claim** - How many tokens users receive per QR code scan
+    - **Max claims per wallet** - Limit how many times each wallet can claim
+    - **Token image** - Upload an image to represent your token (required)
+    - **Decimals** - Token precision (defaults to 9)
+
+    Example configuration:
+
+    ```typescript
+    {
+      totalSupply: "10000",
+      tokensPerClaim: "10",
+      maxClaimsPerWallet: "5",
+      decimals: "9"
+    }
+    ```
+
+    ### Optional settings
+
+    - **Expiration date** - Set a campaign end date
+    - **Metadata URI** - Add custom metadata for your token
+
+    <Warning>
+      Once a campaign is created, certain settings like total supply and blockchain cannot be changed.
+    </Warning>
+  </Step>
+
+  <Step title="Review and deploy">
+    Before deploying, review your campaign in the preview panel:
+
+    - **Total supply** - Verify the maximum token supply
+    - **Tokens per claim** - Confirm the reward amount
+    - **Campaign duration** - Check if expiration is set
+    - **Blockchain** - Ensure you selected the correct network
+
+    The campaign preview shows:
+
+    ```typescript
+    Campaign Preview {
+      totalSupply: "10000 COFFEE",
+      tokensPerClaim: "10 per claim",
+      duration: "No Expiry",
+      blockchain: "solana"
+    }
+    ```
+
+    Click "Create Campaign" to deploy your loyalty token to the blockchain.
+  </Step>
+
+  <Step title="Generate QR codes">
+    After your campaign is created, navigate to `/qr-generator` to create unique QR codes.
+
+    Each QR code:
+    - Is linked to your campaign
+    - Contains a unique identifier for one-time use
+    - Can be printed on receipts, packaging, or marketing materials
+    - Expires based on your campaign settings
+
+    <Tip>
+      Generate QR codes in batches for events or bulk distribution to save time.
+    </Tip>
+  </Step>
+
+  <Step title="Distribute and track">
+    Share your QR codes with customers through:
+
+    - **Physical receipts** - Print QR codes on purchase receipts
+    - **Marketing materials** - Include in flyers, posters, or packaging
+    - **Digital channels** - Share via email, social media, or your website
+    - **Events** - Display QR codes at conferences and meetups
+
+    ### Customer claiming flow
+
+    When customers scan your QR code:
+
+    1. They're directed to `/claim` with a unique token parameter
+    2. They connect their wallet (Phantom, WalletConnect, etc.)
+    3. The system validates:
+       - QR code hasn't been used before
+       - Wallet hasn't exceeded claim limits
+       - Campaign is still active
+    4. Tokens are instantly transferred to their wallet
+
+    The claim validation follows this schema:
+
+    ```typescript
+    {
+      tokenId: string,
+      walletAddress: string,
+      wallet: "solana",
+      uniqueId: string
+    }
+    ```
+
+    <Note>
+      Built-in fraud prevention protects against double claims, wallet limits, and QR code abuse.
+    </Note>
+  </Step>
+
+  <Step title="Monitor your campaign">
+    Return to your admin dashboard to track performance:
+
+    - View real-time claim statistics
+    - Monitor remaining token supply
+    - Analyze user engagement patterns
+    - Download campaign reports
+
+    The analytics dashboard provides insights into:
+    - Total claims over time
+    - Unique wallets claiming tokens
+    - Popular claim times and locations
+    - Campaign ROI metrics
+  </Step>
+</Steps>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you've created your first campaign:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Explore features" icon="stars" href="/features">
+    Discover all the powerful tools available in Stampchain
+  </Card>
+  <Card title="Admin dashboard" icon="chart-line" href="/guides/admin-dashboard">
+    Learn how to manage and monitor your campaigns
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Need help?
+
+If you encounter any issues during setup:
+
+- Check that your wallet is connected and on the correct network
+- Ensure you have sufficient funds for transaction fees
+- Verify all required fields are filled correctly
+- Review campaign settings before deployment
+
+<Warning>
+  Campaign settings like total supply and blockchain cannot be changed after creation. Double-check all parameters before deploying.
+</Warning>

@@ -1,0 +1,267 @@
+---
+title: Authentication
+description: Learn how to authenticate with the Stampchain API using NextAuth sessions
+---
+
+## Overview
+
+The Stampchain API uses [NextAuth.js](https://next-auth.js.org/) with Google OAuth for authentication. Protected endpoints require an active user session, which is managed through secure HTTP-only cookies.
+
+## Authentication Flow
+
+### 1. Google OAuth Login
+
+Users authenticate through Google OAuth by accessing the `/api/auth/signin/google` endpoint or the application's login page.
+
+```bash
+# Redirect users to the login page
+https://your-domain.com/login
+```
+
+### 2. Session Management
+
+Once authenticated, NextAuth creates a session and stores it in a secure HTTP-only cookie. This session is automatically included in subsequent requests made from the same browser.
+
+### 3. Session Verification
+
+Protected API endpoints use `getServerSession()` to verify the user's authentication status:
+
+```typescript
+import { getServerSession } from 'next-auth'
+
+const session = await getServerSession()
+if (!session) {
+  return NextResponse.json({
+    success: false,
+    error: 'Please login to proceed'
+  })
+}
+```
+
+## Protected vs Public Endpoints
+
+### Protected Endpoints
+
+These endpoints require authentication and will return an error if no valid session exists:
+
+- `POST /api/create-campaign` - Create a new token campaign
+- `GET /api/get-all-campaigns` - Retrieve user's campaigns
+- `POST /api/create-qr-codes` - Generate QR codes for a campaign
+- `GET /api/load-qr-codes` - Load QR codes for a campaign
+- `GET /api/get-wallet` - Get user's wallet information
+
+<Warning>
+Attempting to access protected endpoints without authentication will return a 401-style error response.
+</Warning>
+
+### Public Endpoints
+
+These endpoints do not require authentication:
+
+- `POST /api/claim` - Claim tokens with a unique code
+- `POST /api/claim/to-wallet` - Claim tokens to a specific wallet
+- `POST /api/create-account` - Create a new user account
+- `GET /api/fetch-claim-qr-details` - Fetch details for a claim QR code
+
+## Making Authenticated Requests
+
+### Browser Requests
+
+When making requests from the browser, authentication is handled automatically through cookies:
+
+```javascript
+fetch('/api/create-campaign', {
+  method: 'POST',
+  credentials: 'include', // Important: Include cookies
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    // Campaign data
+  })
+})
+```
+
+### Server-Side Requests
+
+For server-side requests, you need to include the NextAuth session cookie:
+
+```bash
+curl -X POST https://your-domain.com/api/create-campaign \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=YOUR_SESSION_TOKEN" \
+  -d '{
+    "name": "My Token",
+    "tokenSymbol": "MTK"
+  }'
+```
+
+<Note>
+The session cookie name may vary based on your NextAuth configuration. Common names include `next-auth.session-token` (production) or `__Secure-next-auth.session-token` (secure contexts).
+</Note>
+
+### API Clients
+
+When using API clients like Postman or Insomnia:
+
+1. First, authenticate through the browser at `/login`
+2. Extract the session cookie from your browser's developer tools
+3. Include the cookie in your API client requests
+
+## Authentication Responses
+
+### Successful Authentication
+
+When a valid session exists, the API processes the request normally:
+
+```json
+{
+  "success": true,
+  "data": {
+    // Endpoint-specific data
+  }
+}
+```
+
+### Authentication Failures
+
+When authentication is required but not provided:
+
+```json
+{
+  "success": false,
+  "data": "Please login to proceed"
+}
+```
+
+Or:
+
+```json
+{
+  "success": false,
+  "error": "You are not authorized to this. Please log in",
+  "data": []
+}
+```
+
+## Session Information
+
+Authenticated requests have access to the following session information:
+
+- `session.user.email` - User's email address from Google OAuth
+- `session.user.name` - User's name from Google
+- `session.user.image` - User's profile image URL
+
+The API uses the user's email to associate resources (campaigns, wallets, etc.) with their account:
+
+```typescript
+const email = session.user?.email
+
+// Query user-specific data
+const { data } = await supabase
+  .from('token_mints')
+  .select('*')
+  .eq('creator_email', email)
+```
+
+## Account Creation Flow
+
+When a user logs in for the first time:
+
+1. User authenticates via Google OAuth
+2. Application calls `POST /api/create-account` with the user's email
+3. API generates a Solana wallet (keypair) for the user
+4. Wallet information is stored in the database
+5. User is redirected to the admin dashboard
+
+```bash
+curl -X POST https://your-domain.com/api/create-account \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "url": "/admin"
+}
+```
+
+<Note>
+If the user already exists, the API returns success without creating a duplicate account.
+</Note>
+
+## Security Considerations
+
+### Cookie Security
+
+- Sessions are stored in HTTP-only cookies, preventing XSS attacks
+- Cookies are secured with SameSite attributes
+- Production environments should use HTTPS for secure cookie transmission
+
+### Session Expiration
+
+NextAuth sessions expire based on your configuration. Users will need to re-authenticate when their session expires.
+
+### API Key Authentication
+
+<Warning>
+The Stampchain API does not currently support API key or token-based authentication. All authentication is session-based through NextAuth.
+</Warning>
+
+For programmatic access, consider:
+
+- Using public endpoints that don't require authentication
+- Implementing a custom authentication strategy for your use case
+- Managing session cookies programmatically
+
+## Environment Configuration
+
+To enable Google OAuth authentication, configure the following environment variables:
+
+```bash
+# Google OAuth Credentials
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+
+# NextAuth Configuration
+NEXTAUTH_URL=https://your-domain.com
+NEXTAUTH_SECRET=your-secret-key
+```
+
+## Testing Authentication
+
+To test authenticated endpoints:
+
+1. Navigate to the login page in your browser
+2. Sign in with Google
+3. Open browser developer tools and copy the session cookie
+4. Use the cookie in your API requests
+
+Example with curl:
+
+```bash
+# Get all campaigns (requires auth)
+curl -X GET https://your-domain.com/api/get-all-campaigns \
+  -H "Cookie: next-auth.session-token=YOUR_SESSION_TOKEN"
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "error": false,
+  "data": [
+    {
+      "id": 1,
+      "name": "My Campaign",
+      "tokenSymbol": "MTK"
+    }
+  ]
+}
+```

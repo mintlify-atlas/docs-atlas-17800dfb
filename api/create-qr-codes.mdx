@@ -1,0 +1,114 @@
+---
+title: "Create QR Codes"
+description: "Generate multiple unique QR codes for a campaign with claim URLs"
+---
+
+## POST /api/create-qr-codes
+
+Creates a specified number of unique QR codes for a campaign. Each QR code is generated with a unique UUID v4 identifier and associated claim URL. The codes are stored in the database and marked as unused until claimed.
+
+### Authentication
+
+This endpoint requires authentication via NextAuth session. Users must be logged in to create QR codes.
+
+### Request Body
+
+<ParamField body="campaign" type="string" required>
+  The campaign ID (token_mints ID) to associate the QR codes with. Must be a valid existing campaign.
+</ParamField>
+
+<ParamField body="qrCount" type="number" required>
+  The number of QR codes to generate. Must be a positive integer.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates whether the request was successful.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of generated QR code objects, each containing:
+  
+  <ResponseField name="unique_code" type="string">
+    The UUID v4 unique identifier for the QR code.
+  </ResponseField>
+  
+  <ResponseField name="claim_url" type="string">
+    The full URL where users can claim the token using this QR code.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the request failed, or `false` if successful.
+</ResponseField>
+
+### How QR Code Generation Works
+
+1. **Validation**: The endpoint validates the campaign exists in the `token_mints` table
+2. **UUID Generation**: For each QR code, a unique UUID v4 identifier is generated using the `uuid` library
+3. **Database Storage**: Each code is stored in the `qr_codes` table with:
+   - `campaign_id`: Links to the campaign
+   - `unique_code`: The generated UUID
+   - `used`: Initially set to `false`
+4. **URL Generation**: A claim URL is generated for each unique code using the `generateURL` utility
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/create-qr-codes \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=your-session-token" \
+  -d '{
+    "campaign": "550e8400-e29b-41d4-a716-446655440000",
+    "qrCount": 5
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "unique_code": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "claim_url": "https://your-domain.com/claim/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    {
+      "unique_code": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "claim_url": "https://your-domain.com/claim/b2c3d4e5-f6a7-8901-bcde-f12345678901"
+    }
+  ],
+  "error": false
+}
+```
+
+### Error Responses
+
+**Unauthorized (No Session)**
+```json
+{
+  "success": false,
+  "error": "You have no access to this. Please log in",
+  "data": null
+}
+```
+
+**Invalid Campaign**
+```json
+{
+  "success": false,
+  "error": "Campaign not found",
+  "data": null
+}
+```
+
+**Database Error**
+```json
+{
+  "success": false,
+  "error": "Failed to insert QR codes",
+  "data": null
+}
+```

@@ -1,0 +1,61 @@
+---
+title: 'Get Users'
+description: 'Retrieve all token mints from the system'
+---
+
+## GET /api/getUsers
+
+Retrieves all token mint records from the Stampchain system. Despite the endpoint name suggesting user retrieval, this endpoint actually returns data from the `token_mints` table.
+
+### Authentication
+
+No authentication required.
+
+### Request Parameters
+
+No parameters required.
+
+### Response
+
+Returns an array of token mint objects. The structure depends on the `token_mints` table schema.
+
+### Example Request
+
+```bash
+curl -X GET https://your-domain.com/api/getUsers
+```
+
+### Example Response (Success)
+
+```json
+[
+  {
+    "id": 1,
+    "token_address": "...",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "token_address": "...",
+    "created_at": "2024-01-02T00:00:00Z"
+  }
+]
+```
+
+### Example Response (Error)
+
+```json
+{
+  "error": "Database error message"
+}
+```
+
+### Implementation Details
+
+The endpoint:
+1. Creates a Supabase client connection
+2. Queries all records from the `token_mints` table
+3. Returns the data as a JSON array
+4. Returns a 500 status code with an error message if the query fails
+
+**Note:** The endpoint name `getUsers` appears to be a misnomer. The actual implementation retrieves token mint data, not user data. The commented-out line in the source code (`// const { data, error } = await supabase.from('users').select('*')`) suggests this endpoint may have originally been intended to retrieve user data.

@@ -1,0 +1,80 @@
+---
+title: 'Create Account'
+description: 'Create a new user account with an automatically generated Solana wallet'
+---
+
+## POST /api/create-account
+
+Creates a new user account in the Stampchain system. This endpoint automatically generates a Solana wallet (keypair) for the user and stores it securely in the database. If the user already exists, it returns a success response without creating a duplicate account.
+
+### Authentication
+
+No authentication required.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  The email address of the user to create an account for.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the account creation was successful.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The redirect URL after successful account creation (typically '/admin').
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if the account creation failed.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/create-account \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+### Example Response (New Account)
+
+```json
+{
+  "success": true,
+  "url": "/admin"
+}
+```
+
+### Example Response (Existing Account)
+
+```json
+{
+  "success": true,
+  "url": "/admin"
+}
+```
+
+### Example Response (Error)
+
+```json
+{
+  "success": false,
+  "error": "Database insertion error message"
+}
+```
+
+### Implementation Details
+
+When a new account is created, the endpoint:
+1. Checks if a user with the provided email already exists
+2. If the user exists, returns a successful response without creating a duplicate
+3. If the user doesn't exist, generates a new Solana keypair using `@solana/web3.js`
+4. Stores the user's email, server wallet public key, and server private key in the database
+5. Returns a success response with a redirect URL
+
+The generated Solana wallet serves as the user's server-side wallet for token minting operations.

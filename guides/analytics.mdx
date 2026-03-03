@@ -1,0 +1,477 @@
+---
+title: Analytics
+description: Understanding campaign metrics, charts, and performance indicators in Stampchain
+---
+
+Stampchain provides comprehensive analytics to help you understand campaign performance, user engagement, and token distribution patterns. This guide explains all available metrics and how to interpret them for optimal campaign management.
+
+## Analytics Overview
+
+Analytics in Stampchain are available at two levels:
+
+1. **Account-Level Analytics**: Aggregate data across all campaigns (Analytics tab)
+2. **Campaign-Level Analytics**: Detailed metrics for individual campaigns (Campaign Overview tab)
+
+Both levels provide actionable insights to help you optimize your loyalty programs.
+
+## Account-Level Analytics
+
+Access account-level analytics from the Analytics tab in your admin dashboard.
+
+**Location in code:** `src/app/(protected-route)/admin/components/view-analytics.tsx:5`
+
+<Note>
+  Screenshot placeholder: Analytics tab showing token distribution trends and user engagement charts
+</Note>
+
+### Token Distribution Trends
+
+This chart displays daily token claims across all your campaigns over the last 30 days.
+
+**Location in code:** `src/app/(protected-route)/admin/components/view-analytics.tsx:13`
+
+#### What It Shows
+
+- **X-axis**: Date (last 30 days)
+- **Y-axis**: Number of tokens claimed
+- **Data Points**: Each point represents total claims for that day
+- **Trend Line**: Visual indicator of growth or decline
+
+#### How to Interpret
+
+<AccordionGroup>
+  <Accordion title="Upward Trend">
+    Indicates growing engagement with your campaigns. Your QR code distribution strategy is working, and more users are discovering and claiming tokens.
+    
+    **Action**: Continue current distribution methods and consider expanding to new locations or channels.
+  </Accordion>
+
+  <Accordion title="Downward Trend">
+    Suggests declining interest or reduced accessibility to QR codes. May also indicate campaign fatigue or reaching market saturation.
+    
+    **Action**: Refresh your campaign strategy, generate new QR codes, or create new campaigns with different incentives.
+  </Accordion>
+
+  <Accordion title="Spike Patterns">
+    Large spikes indicate successful promotional events, viral sharing, or concentrated distribution periods.
+    
+    **Action**: Analyze what caused the spike and replicate successful tactics.
+  </Accordion>
+
+  <Accordion title="Flat Line">
+    Steady, consistent claims indicate stable, predictable engagement. This is common for ongoing loyalty programs.
+    
+    **Action**: Maintain current strategy while testing small optimizations.
+  </Accordion>
+</AccordionGroup>
+
+### User Engagement Metrics
+
+This section provides insights into how users interact with your campaigns.
+
+**Location in code:** `src/app/(protected-route)/admin/components/view-analytics.tsx:28`
+
+#### Key Metrics
+
+<CardGroup cols={2}>
+  <Card title="Total Unique Users" icon="users">
+    The number of distinct wallet addresses that have claimed tokens across all campaigns.
+    
+    **Insight**: Measures your reach and customer base size.
+  </Card>
+
+  <Card title="Average Claims per User" icon="chart-bar">
+    Mean number of times each user has claimed tokens.
+    
+    **Insight**: Indicates engagement depth and repeat participation.
+  </Card>
+
+  <Card title="Conversion Rate" icon="percentage">
+    Percentage of generated QR codes that have been claimed.
+    
+    **Insight**: Measures distribution effectiveness.
+  </Card>
+
+  <Card title="Retention Rate" icon="rotate">
+    Percentage of users who claim tokens multiple times.
+    
+    **Insight**: Shows campaign stickiness and loyalty.
+  </Card>
+</CardGroup>
+
+## Campaign-Level Analytics
+
+Detailed analytics for individual campaigns are available on the campaign detail page under the Overview tab.
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/overview.tsx:86`
+
+<Note>
+  Screenshot placeholder: Campaign overview showing daily claims activity graph and detail cards
+</Note>
+
+### Daily Claims Activity
+
+An area graph showing token claim patterns for the specific campaign over 30 days.
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/area-graph.tsx`
+
+#### Chart Features
+
+- **Interactive**: Hover over data points to see exact values
+- **Gradient Fill**: Visual emphasis on claim volume
+- **Time-based X-axis**: Shows progression over campaign lifetime
+- **Token Count Y-axis**: Displays number of tokens claimed
+
+#### Patterns to Watch
+
+**Early Spike**: High initial interest that tapers off
+- **Common in**: Event-based campaigns, launch promotions
+- **Action**: Plan for initial surge, have QR codes ready
+
+**Gradual Growth**: Slow, steady increase over time
+- **Common in**: Word-of-mouth campaigns, organic growth
+- **Action**: Patient nurturing, consistent distribution
+
+**Cyclical Pattern**: Regular peaks and valleys
+- **Common in**: Weekly promotions, recurring events
+- **Action**: Align QR code distribution with high-activity periods
+
+**Plateau**: Flat line after initial growth
+- **Common in**: Market saturation, limited distribution
+- **Action**: Introduce new incentives or expand to new audiences
+
+### Campaign Details Card
+
+Provides essential campaign configuration information.
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/overview.tsx:105`
+
+#### Displayed Information
+
+| Metric | Description |
+|--------|-------------|
+| **Created** | Campaign creation date |
+| **Tokens per Claim** | Amount users receive per scan |
+| **Max Claims/Wallet** | Limit on claims per user |
+| **Blockchain** | Network where tokens are deployed |
+| **Contract Address** | Smart contract location |
+
+<Info>
+  Use the creation date to calculate campaign age and assess performance relative to time elapsed.
+</Info>
+
+### Quick Stats Grid
+
+Two prominent statistics showing key campaign metrics.
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/overview.tsx:133`
+
+#### QR Codes Generated
+
+- **Color**: Blue background
+- **What it measures**: Total QR codes created for this campaign
+- **Use case**: Compare against QR codes used to calculate waste or efficiency
+
+#### Total Claims
+
+- **Color**: Purple background
+- **What it measures**: Number of successful token claims
+- **Use case**: Primary success metric for campaign adoption
+
+### Token Distribution Progress
+
+Shows how much of the total token supply has been distributed.
+
+#### Metrics Displayed
+
+- **Tokens Distributed**: Number of tokens claimed so far
+- **Tokens Remaining**: Available supply left
+- **Progress Bar**: Visual representation of distribution percentage
+- **Percentage**: Exact percentage of supply distributed
+
+#### Monitoring Supply
+
+<Warning>
+  When tokens remaining falls below 20%, consider:
+  - Generating fewer new QR codes
+  - Planning a follow-up campaign
+  - Adjusting tokens per claim for remaining codes
+</Warning>
+
+## Database-Calculated Metrics
+
+Several metrics are calculated server-side using database functions for accuracy and performance.
+
+### Monthly Campaign Count
+
+Compares campaigns created this month versus last month.
+
+**Location in code:** `src/app/(protected-route)/admin/components/stats.tsx:39`
+
+#### Calculation Method
+
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE created_at >= start_of_this_month) as this_month_count,
+  COUNT(*) FILTER (WHERE created_at >= start_of_last_month 
+    AND created_at < start_of_this_month) as last_month_count
+FROM token_mints
+WHERE creator_email = 'your-email'
+```
+
+Percentage change is calculated and displayed with up/down indicators.
+
+### Monthly Token Distribution
+
+Tracks tokens distributed (QR codes claimed) month-over-month.
+
+**Location in code:** `src/app/(protected-route)/admin/components/stats.tsx:60`
+
+#### Calculation Method
+
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE used = true 
+    AND claimed_at >= start_of_this_month) as this_month_count,
+  COUNT(*) FILTER (WHERE used = true 
+    AND claimed_at >= start_of_last_month
+    AND claimed_at < start_of_this_month) as last_month_count
+FROM qr_codes
+WHERE campaign_id IN (your_campaigns)
+```
+
+## Performance Indicators
+
+Key performance indicators (KPIs) to track for campaign success:
+
+### Conversion Rate
+
+Formula: `(QR Codes Used / QR Codes Generated) × 100`
+
+<Tabs>
+  <Tab title="Excellent (75%+)">
+    Your QR code distribution is highly targeted and effective. Users who receive codes are highly likely to claim.
+    
+    **Characteristics**:
+    - Direct distribution to engaged customers
+    - QR codes at point of value exchange
+    - Clear value proposition
+  </Tab>
+
+  <Tab title="Good (50-75%)">
+    Solid performance with room for optimization. Most distributed codes are being used.
+    
+    **Improvements**:
+    - Refine distribution targeting
+    - Improve QR code placement visibility
+    - Enhance claim process communication
+  </Tab>
+
+  <Tab title="Fair (25-50%)">
+    Moderate performance. Many codes are not being claimed.
+    
+    **Improvements**:
+    - Reassess distribution strategy
+    - Increase incentive clarity
+    - Reduce friction in claim process
+    - Better educate recipients
+  </Tab>
+
+  <Tab title="Needs Improvement (<25%)">
+    Low conversion indicates distribution or value issues.
+    
+    **Actions Required**:
+    - Audit QR code placement
+    - Survey non-claimers for barriers
+    - Increase token value or benefits
+    - Simplify claim instructions
+  </Tab>
+</Tabs>
+
+### Retention Rate
+
+Formula: `(Users with 2+ Claims / Total Users) × 100`
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/overview.tsx` (example data at line 29)
+
+#### Benchmarks
+
+- **High Retention (60%+)**: Strong loyalty program with repeat engagement
+- **Moderate Retention (30-60%)**: One-time plus some repeat users
+- **Low Retention (less than 30%)**: Primarily one-time claimers, consider incentives for return
+
+### Average Tokens per User
+
+Formula: `Total Tokens Distributed / Unique Users`
+
+**Location in code:** `src/app/(protected-route)/admin/campaign/[id]/components/overview.tsx:37`
+
+#### Interpretation
+
+- **Above Tokens per Claim**: Users are claiming multiple times (good)
+- **Equal to Tokens per Claim**: Most users claim only once
+- **Below Tokens per Claim**: Data error or calculation issue
+
+## Using Analytics to Optimize
+
+### Identifying Best Distribution Channels
+
+<Steps>
+  <Step title="Track QR Code Batches">
+    When generating QR codes, note where each batch will be distributed (e.g., "Store A receipts", "Instagram campaign").
+  </Step>
+
+  <Step title="Monitor Claim Dates">
+    Compare claim activity dates against distribution dates for each batch.
+  </Step>
+
+  <Step title="Calculate Channel Conversion">
+    Determine which distribution channels have highest claim rates.
+  </Step>
+
+  <Step title="Allocate Resources">
+    Generate more codes for high-performing channels, reduce or eliminate low-performers.
+  </Step>
+</Steps>
+
+### Timing Optimization
+
+Use the daily claims activity graph to identify:
+
+- **Peak claim days**: Days of week with most activity
+- **Peak claim times**: If hourly data available
+- **Claim velocity**: How quickly codes are used after distribution
+
+**Action**: Schedule QR code distribution before peak claim periods.
+
+### Supply Management
+
+<CardGroup cols={2}>
+  <Card title="Monitor Remaining Supply" icon="gas-pump">
+    Set alerts when supply drops below thresholds (e.g., 30%, 10%) to avoid running out unexpectedly.
+  </Card>
+
+  <Card title="Claim Rate Projection" icon="chart-line">
+    Use current claim rate to project when supply will be exhausted. Plan follow-up campaigns accordingly.
+  </Card>
+
+  <Card title="Adjust Tokens per Claim" icon="sliders">
+    If supply is depleting too fast, reduce tokens per claim for new QR codes while maintaining existing codes.
+  </Card>
+
+  <Card title="Campaign Extensions" icon="calendar-plus">
+    If supply lasts longer than expected, extend campaign expiration or increase promotion.
+  </Card>
+</CardGroup>
+
+## Exporting Analytics Data
+
+While not shown in the current UI code, best practices for analytics export:
+
+### Recommended Export Features
+
+- **CSV Export**: Download metrics as spreadsheet
+- **Date Range Selection**: Choose specific timeframes
+- **Campaign Comparison**: Export multiple campaigns for comparison
+- **Scheduled Reports**: Email weekly/monthly summaries
+
+### Data to Export
+
+- Daily claim counts
+- User wallet addresses (anonymized if needed)
+- Claim timestamps
+- QR code generation and usage dates
+- Token distribution by campaign
+
+## Troubleshooting Analytics
+
+### Charts Not Displaying
+
+1. Check if campaign has claim activity
+2. Verify date range includes activity
+3. Refresh page to reload data
+4. Check browser console for errors
+
+### Metrics Don't Match
+
+1. Ensure you're comparing same time periods
+2. Check for caching issues (hard refresh)
+3. Verify database calculations are current
+4. Allow time for blockchain confirmations
+
+### Missing Data Points
+
+1. Confirm claims were successful
+2. Check blockchain transaction status
+3. Verify database sync is working
+4. Review claim timestamps
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Regular Review Schedule">
+    Check analytics:
+    - **Daily**: During active campaigns or promotions
+    - **Weekly**: For established, ongoing programs
+    - **Monthly**: For long-term trend analysis
+  </Accordion>
+
+  <Accordion title="Comparative Analysis">
+    Always compare:
+    - Current period vs. previous period
+    - Campaign A vs. Campaign B
+    - Expected vs. actual performance
+  </Accordion>
+
+  <Accordion title="Action-Oriented Review">
+    For every metric you review, ask:
+    - Is this good or bad?
+    - Why is it this way?
+    - What action should I take?
+  </Accordion>
+
+  <Accordion title="Documentation">
+    Keep notes on:
+    - When you generated QR codes
+    - Where codes were distributed
+    - Marketing activities and promotions
+    - External factors (holidays, events)
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Analytics Strategies
+
+### Cohort Analysis
+
+Group users by when they first claimed:
+- **Week 1 cohort**: Users who claimed in campaign week 1
+- **Week 2 cohort**: Users who claimed in campaign week 2
+- Compare retention rates between cohorts
+
+### A/B Testing
+
+Create two similar campaigns with one variable changed:
+- Different tokens per claim amounts
+- Different QR code designs
+- Different distribution channels
+- Compare performance to find optimal approach
+
+### Segmentation
+
+Analyze users by:
+- Number of claims (1x, 2-5x, 6+ times)
+- Time to first claim after code generation
+- Claim day of week or time of day
+- Blockchain network preference
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Admin Dashboard" icon="gauge" href="/guides/admin-dashboard">
+    Learn about other dashboard features and management tools.
+  </Card>
+
+  <Card title="Creating Campaigns" icon="plus" href="/guides/creating-campaigns">
+    Use analytics insights to design better campaigns.
+  </Card>
+</CardGroup>

@@ -1,0 +1,145 @@
+---
+title: "Fetch Claim Details"
+description: "Retrieve token mint information and claim details for a QR code campaign"
+---
+
+## POST /api/fetch-claim-qr-details
+
+Fetches detailed information about a token mint associated with a claim campaign, including token metadata and the number of tokens distributed per claim.
+
+### Authentication
+
+Requires a valid session authenticated via NextAuth. Returns error if session is not found.
+
+### Request Body
+
+The request body should contain a string representing the token mint ID (campaign ID).
+
+<ParamField body="body" type="string" required>
+  The ID of the token mint to fetch details for (sent as the direct body value)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the request was successful
+</ResponseField>
+
+<ResponseField name="data" type="object | null">
+  Token mint details if successful, null otherwise
+  
+  <ResponseField name="data.name" type="string">
+    The name of the token
+  </ResponseField>
+  
+  <ResponseField name="data.tokenSymbol" type="string">
+    The token's symbol/ticker
+  </ResponseField>
+  
+  <ResponseField name="data.tokensPerClaim" type="number">
+    The number of tokens distributed per claim
+  </ResponseField>
+  
+  <ResponseField name="data.description" type="string">
+    Description of the token or campaign
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the request failed, false if successful
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/fetch-claim-qr-details \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=your-session-token" \
+  -d '"campaign-id-12345"'
+```
+
+### Example Response
+
+#### Success
+
+```json
+{
+  "success": true,
+  "error": false,
+  "data": {
+    "name": "Stampchain Rewards Token",
+    "tokenSymbol": "STMP",
+    "tokensPerClaim": 100,
+    "description": "Earn rewards by scanning QR codes at participating locations"
+  }
+}
+```
+
+#### Error - Authentication Required
+
+```json
+{
+  "success": false,
+  "error": "You have to log in to use this",
+  "data": null
+}
+```
+
+#### Error - Token Not Found
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "No rows found"
+}
+```
+
+#### Error - Database Error
+
+```json
+{
+  "success": false,
+  "error": "Database connection error",
+  "data": null
+}
+```
+
+### Data Retrieval Process
+
+The endpoint performs the following operations:
+
+1. **Session Check**: Verifies the user has a valid authenticated session
+2. **Database Query**: Queries the `token_mints` table with the provided ID
+3. **Field Selection**: Retrieves specific fields:
+   - `id` - Token mint identifier
+   - `mint_address` - Solana mint address
+   - `name` - Token name
+   - `symbol` - Token symbol
+   - `tokensperclaim` - Tokens per claim amount
+   - `description` - Token/campaign description
+4. **Data Transformation**: Returns a cleaned response object with camelCase field names
+
+### Use Cases
+
+This endpoint is typically used to:
+
+- Display token information before claiming
+- Show users what they will receive when scanning a QR code
+- Validate that a campaign is active and has available tokens
+- Provide details for claim confirmation screens
+
+### Integration with Claim Flow
+
+1. User scans QR code containing `uniqueId`
+2. Frontend calls `/api/claim` to validate token and get `campaign_id`
+3. Frontend calls `/api/fetch-claim-qr-details` with `campaign_id` to display token details
+4. User confirms and selects wallet
+5. Frontend calls `/api/claim/to-wallet` to execute the transfer
+
+### Error Scenarios
+
+- **No session**: Returns authentication error, user must log in
+- **Invalid campaign ID**: Returns "No rows found" error
+- **Database connection issues**: Returns database error message
+- **Missing fields**: Returns appropriate database error

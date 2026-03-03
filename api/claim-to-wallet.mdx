@@ -1,0 +1,138 @@
+---
+title: "Claim Token to Wallet"
+description: "Transfer tokens from a QR code claim directly to a Solana wallet address"
+---
+
+## POST /api/claim/to-wallet
+
+Processes a token claim by validating the QR code and transferring the specified amount of tokens to the recipient's Solana wallet address using the SPL Token 2022 program.
+
+### Authentication
+
+Requires a valid session authenticated via NextAuth. Returns 401 error if session is not found.
+
+### Request Body
+
+<ParamField body="tokenId" type="string" required>
+  The ID of the token mint from the `token_mints` table
+</ParamField>
+
+<ParamField body="walletAddress" type="string" required>
+  The recipient's Solana wallet public key address
+</ParamField>
+
+<ParamField body="uniqueId" type="string" required>
+  The unique QR code identifier to claim
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the claim and transfer were successful
+</ResponseField>
+
+<ResponseField name="data" type="string | null">
+  Success message if the claim was processed, null otherwise
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the request failed, false if successful
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/claim/to-wallet \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=your-session-token" \
+  -d '{
+    "tokenId": "token-mint-id-123",
+    "walletAddress": "8x7Jk9mN5pQ2rT3vW4yZ6aB1cD8eF9gH0iJ2kL3mN4oP",
+    "uniqueId": "qr-code-unique-id"
+  }'
+```
+
+### Example Response
+
+#### Success
+
+```json
+{
+  "success": true,
+  "error": false,
+  "data": "This has been claimed"
+}
+```
+
+#### Error - QR Code Already Used
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "This code has been used or invalid"
+}
+```
+
+#### Error - Invalid Request
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": [
+    {
+      "code": "invalid_type",
+      "message": "Expected string, received undefined"
+    }
+  ]
+}
+```
+
+### Claim Validation and Transfer Process
+
+The endpoint executes the following workflow:
+
+1. **Session Validation**: Verifies user is authenticated via NextAuth
+2. **Request Validation**: Validates request body against `ClaimTokenToAddress` schema
+3. **QR Code Validation**: 
+   - Queries `qr_codes` table for the `uniqueId`
+   - Checks if the code has already been used (`used` field)
+   - Returns error if code is invalid or already claimed
+4. **Data Retrieval**: Fetches in parallel:
+   - Server wallet keypair from user's `server_key` field
+   - Token mint data including `mint_address`, `mint_secret_key`, and `tokensperclaim`
+5. **Solana Transfer**:
+   - Connects to Solana devnet
+   - Gets or creates associated token accounts for sender and recipient
+   - Transfers tokens using SPL Token 2022 program
+   - Amount calculated as: `tokensperclaim * 10^9` (accounting for 9 decimals)
+6. **Database Update**: Marks the QR code as used:
+   - Sets `used` to `true`
+   - Sets `claimed_at` to current timestamp
+
+### QR Code Verification
+
+The `isQRCodeValid` function performs these checks:
+
+- **Existence Check**: Verifies the QR code exists in the database
+- **Usage Check**: Ensures `used` field is `false`
+- **Returns**: `{ success: boolean, errorMessage: string | null }`
+
+### Token Transfer Details
+
+- **Network**: Solana Devnet
+- **Program**: SPL Token 2022 (`TOKEN_2022_PROGRAM_ID`)
+- **Confirmation**: `confirmed` commitment level
+- **Accounts**: Automatically creates associated token accounts if they don't exist
+- **Decimals**: Assumes 9 decimal places for token amounts
+
+### Error Scenarios
+
+- **No session**: User must be authenticated
+- **QR code already used**: Code can only be claimed once
+- **Server wallet not found**: User's server wallet must be configured
+- **Token mint not found**: Invalid `tokenId` provided
+- **Insufficient funds**: Sender's token account must have enough tokens
+- **Invalid wallet address**: Recipient address must be a valid Solana public key
+- **Database update failed**: QR code status update must succeed after transfer

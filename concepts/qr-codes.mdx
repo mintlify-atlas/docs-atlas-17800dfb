@@ -1,0 +1,485 @@
+---
+title: "QR Codes"
+description: "Learn how QR codes work in Stampchain for secure, one-time token distribution"
+---
+
+## Overview
+
+QR codes in Stampchain enable secure, one-time token distribution. Each QR code contains a unique identifier that customers scan to claim loyalty tokens to their Solana wallet.
+
+## How QR Codes Work
+
+### 1. Generation
+
+QR codes are generated in batches for a specific campaign:
+
+```typescript
+import { v4 as uuidv4 } from "uuid";
+
+const codes = Array.from({ length: Number(qrCount) }, () => {
+  const unique_code = uuidv4();
+  return {
+    campaign_id: data?.id,
+    unique_code,
+    used: false
+  };
+});
+
+const { error: insertError } = await supabase
+  .from("qr_codes")
+  .insert(codes);
+```
+
+### 2. Distribution
+
+Each QR code encodes a claim URL:
+
+```typescript
+const claim_url = `https://yourapp.com/claim?token=${unique_code}`;
+```
+
+Users scan this with their phone camera, which opens the claim page.
+
+### 3. Validation
+
+When a user accesses the claim URL, Stampchain validates the code:
+
+```typescript
+const isQRCodeValid = async (uniqueId: string) => {
+  const { error, data } = await supabase
+    .from('qr_codes')
+    .select('*')
+    .eq('unique_code', uniqueId)
+    .maybeSingle();
+    
+  if (error) {
+    return { success: false, errorMessage: error.message };
+  }
+  
+  if (data.used) {
+    return {
+      success: false,
+      errorMessage: 'This code has been used or invalid'
+    };
+  }
+  
+  return { success: true, errorMessage: null };
+};
+```
+
+<Info>
+QR codes use UUIDv4 for unique identifiers, providing 128-bit randomness to prevent guessing or collision attacks.
+</Info>
+
+## Creating QR Codes
+
+### API Request
+
+```typescript
+POST /api/create-qr-codes
+
+{
+  "campaign": "campaign-uuid",
+  "qrCount": 100
+}
+```
+
+### API Response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "unique_code": "550e8400-e29b-41d4-a716-446655440000",
+      "claim_url": "https://yourapp.com/claim?token=550e8400-e29b-41d4-a716-446655440000"
+    },
+    // ... more codes
+  ],
+  "error": false
+}
+```
+
+### Code Generation Flow
+
+```typescript
+export const POST = async (req: NextRequest) => {
+  const session = await getServerSession();
+
+  if(!session) {
+    return NextResponse.json({
+      success: false,
+      error: 'You have no access to this. Please log in',
+      data: null
+    });
+  }
+
+  const body = await req.json();
+  const validatedBody = CreateQRCodesValidation.safeParse(body);
+  
+  if(!validatedBody.success){
+    return NextResponse.json({
+      success: false,
+      data: null,
+      error: validatedBody.error.message
+    });
+  }
+
+  const { data: { campaign, qrCount } } = validatedBody;
+
+  // Verify campaign exists
+  const { data, error } = await supabase
+    .from('token_mints')
+    .select('id')
+    .eq('id', campaign)
+    .maybeSingle();
+
+  if(error){
+    return NextResponse.json({
+      success: false,
+      error: error.message,
+      data: null
+    });
+  }
+  
+  // Generate unique codes
+  const codes = Array.from({ length: Number(qrCount) }, () => {
+    const unique_code = uuidv4();
+    return {
+      campaign_id: data?.id,
+      unique_code,
+      used: false
+    };
+  });
+  
+  // Save to database
+  const { error: insertError } = await supabase
+    .from("qr_codes")
+    .insert(codes);
+    
+  if (insertError) {
+    return NextResponse.json({
+      success: false,
+      error: "Failed to insert QR codes",
+      data: null,
+    });
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: codes.map(code => ({
+      unique_code: code.unique_code,
+      claim_url: generateURL(code.unique_code),
+    })),
+    error: false,
+  });
+};
+```
+
+<Tip>
+Generate QR codes in batches appropriate for your distribution needs. For large campaigns, create codes in multiple batches to avoid timeout issues.
+</Tip>
+
+## One-Time Use Security
+
+### Database Schema
+
+```sql
+CREATE TABLE qr_codes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_id UUID REFERENCES token_mints(id),
+  unique_code UUID NOT NULL UNIQUE,
+  used BOOLEAN DEFAULT false,
+  claimed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Preventing Double Claims
+
+When a user claims tokens, the QR code is marked as used:
+
+```typescript
+const { data: updateField, error: updateFieldError } = await supabase
+  .from('qr_codes')
+  .update({ 
+    used: true, 
+    claimed_at: new Date().toISOString() 
+  })
+  .eq('unique_code', uniqueId)
+  .maybeSingle();
+```
+
+### Validation Checks
+
+1. **Existence Check**: Does the code exist in the database?
+2. **Used Status**: Has the code already been claimed?
+3. **Campaign Link**: Is the code linked to a valid campaign?
+4. **Expiry Check**: Is the campaign still active? (future feature)
+
+<Warning>
+Once a QR code is used, it cannot be reused. There is no mechanism to reset a code's used status.
+</Warning>
+
+## Claim Flow
+
+### Step 1: Scan QR Code
+
+User scans the QR code with their phone camera:
+
+```
+https://yourapp.com/claim?token=550e8400-e29b-41d4-a716-446655440000
+```
+
+### Step 2: Validate Token
+
+The frontend extracts the token and validates it:
+
+```typescript
+const url = window.location.href;
+const tokenId = url.split('=')[1];
+
+const api = await fetch('/api/claim', {
+  method: "POST",
+  body: JSON.stringify({ token: claimToken })
+});
+
+const result = await api.json();
+
+if (!result.success && typeof result.error === 'string') {
+  toast.error(result.error);
+  return;
+}
+```
+
+### Step 3: Connect Wallet
+
+User connects their Solana wallet to receive tokens:
+
+```typescript
+const { wallet, walletAddress } = useWalletStore();
+
+// User clicks "Connect Wallet"
+// Phantom or other wallet prompts for connection
+```
+
+### Step 4: Claim Tokens
+
+Tokens are transferred to the user's wallet:
+
+```typescript
+const api = await fetch('/api/claim/to-wallet', {
+  method: 'POST',
+  body: JSON.stringify({
+    wallet: 'solana',
+    walletAddress,
+    tokenId: id,
+    uniqueId: uniqueId
+  })
+});
+```
+
+### Step 5: Mark as Used
+
+After successful transfer, the QR code is marked as used:
+
+```typescript
+// Transfer tokens
+await transfer(
+  connection,
+  sender,
+  senderTokenAccount.address,
+  recipientTokenAccount.address,
+  sender.publicKey,
+  amount,
+  [],
+  undefined,
+  TOKEN_2022_PROGRAM_ID
+);
+
+// Mark as used
+await supabase
+  .from('qr_codes')
+  .update({ used: true, claimed_at: new Date().toISOString() })
+  .eq('unique_code', uniqueId);
+```
+
+<Note>
+The QR code is only marked as used after successful token transfer, ensuring claims are atomic.
+</Note>
+
+## Claim Validation
+
+The complete validation flow:
+
+```typescript
+export const POST = async (req: NextRequest) => {
+  const session = await getServerSession();
+  const body = await req.json();
+  const { success, data, error } = ClaimTokenToAddress.safeParse(body);
+  
+  if (!success) {
+    return NextResponse.json({
+      success: false,
+      data: null,
+      error: error.errors
+    });
+  }
+
+  const { tokenId, walletAddress, uniqueId } = data;
+  
+  // 1. Validate QR code
+  const qrCodesValid = await isQRCodeValid(uniqueId);
+  if (!qrCodesValid.success) {
+    return NextResponse.json({
+      success: false,
+      data: null,
+      error: qrCodesValid.errorMessage
+    });
+  }
+
+  // 2. Get server wallet and token data
+  const [serverWallet, tokenData] = await Promise.allSettled([
+    getServerWallets(session!.user!.email!),
+    fetchTokenMintData(tokenId)
+  ]);
+
+  // 3. Transfer tokens
+  const recipient = new PublicKey(walletAddress);
+  const tokenMint = new PublicKey(tokenData.value.data!.mint_address!);
+  
+  const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    sender,
+    tokenMint,
+    recipient,
+    false,
+    "confirmed",
+    undefined,
+    TOKEN_2022_PROGRAM_ID
+  );
+  
+  const amount = Number(tokenData.value.data?.tokensperclaim) * 10 ** 9;
+  
+  await transfer(
+    connection,
+    sender,
+    senderTokenAccount.address,
+    recipientTokenAccount.address,
+    sender.publicKey,
+    amount,
+    [],
+    undefined,
+    TOKEN_2022_PROGRAM_ID
+  );
+
+  // 4. Mark QR code as used
+  await supabase
+    .from('qr_codes')
+    .update({ used: true, claimed_at: new Date().toISOString() })
+    .eq('unique_code', uniqueId);
+
+  return NextResponse.json({
+    success: true,
+    error: false,
+    data: 'This has been claimed'
+  });
+};
+```
+
+## URL Generation
+
+QR codes encode claim URLs using a utility function:
+
+```typescript
+export const generateURL = (uniqueCode: string): string => {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  return `${baseUrl}/claim?token=${uniqueCode}`;
+};
+```
+
+## Printing QR Codes
+
+After generation, you can:
+
+1. **Download as Images**: Convert URLs to QR code images
+2. **Print Stickers**: Physical QR stickers for in-store use
+3. **Digital Distribution**: Email or SMS QR codes to customers
+4. **Batch Export**: Export claim URLs to CSV for external QR generation
+
+<Tip>
+Use a QR code library like `qrcode` or `react-qr-code` to generate printable images from the claim URLs.
+</Tip>
+
+## Analytics
+
+Track QR code usage:
+
+```sql
+-- Total codes generated
+SELECT COUNT(*) FROM qr_codes WHERE campaign_id = 'uuid';
+
+-- Used vs unused
+SELECT 
+  COUNT(*) FILTER (WHERE used = true) as used_count,
+  COUNT(*) FILTER (WHERE used = false) as unused_count
+FROM qr_codes
+WHERE campaign_id = 'uuid';
+
+-- Claim timeline
+SELECT DATE(claimed_at), COUNT(*) 
+FROM qr_codes 
+WHERE campaign_id = 'uuid' AND used = true
+GROUP BY DATE(claimed_at)
+ORDER BY DATE(claimed_at);
+```
+
+## Best Practices
+
+1. **Generate in Advance**: Create QR codes before distribution events
+2. **Monitor Usage**: Track claim rates to measure campaign success
+3. **Secure Distribution**: Only share QR codes with intended recipients
+4. **Test Before Printing**: Verify claim flow works before mass printing
+5. **Batch Appropriately**: Generate manageable batch sizes (100-1000 codes)
+
+## Security Considerations
+
+<Warning>
+QR codes are bearer instruments - anyone with access to the code can claim tokens. Keep unused codes secure.
+</Warning>
+
+- **UUID Randomness**: UUIDv4 provides sufficient entropy to prevent guessing
+- **One-Time Use**: Codes cannot be reused after claiming
+- **Session Validation**: Users must be authenticated (future enhancement)
+- **Rate Limiting**: Consider adding rate limits to prevent abuse
+
+## Common Issues
+
+### "Code has been used"
+
+This error occurs when:
+- Someone already claimed the code
+- The same code was scanned twice
+- Database incorrectly marked code as used
+
+**Solution**: Generate a new code for the customer
+
+### "Invalid token"
+
+This error occurs when:
+- The code doesn't exist in the database
+- The URL was modified or corrupted
+- The code was deleted from the database
+
+**Solution**: Verify the QR code is correctly generated and linked to a campaign
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Wallet Integration" icon="wallet" href="/concepts/wallet-integration">
+    Learn how users connect wallets and claim tokens
+  </Card>
+  <Card title="Campaigns" icon="megaphone" href="/concepts/campaigns">
+    Create campaigns that use QR codes
+  </Card>
+</CardGroup>

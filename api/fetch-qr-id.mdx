@@ -1,0 +1,101 @@
+---
+title: "Fetch QR ID"
+description: "Verify and retrieve campaign ID from token_mints table"
+---
+
+## POST /api/fetch-qr-id
+
+Validates that a campaign exists in the token_mints table and returns its ID. This endpoint is useful for verifying campaign validity before performing operations like creating or loading QR codes.
+
+### Authentication
+
+This endpoint requires authentication via NextAuth session. Users must be logged in to fetch campaign IDs.
+
+### Request Body
+
+The request body should be a single string value representing the campaign ID to verify.
+
+<ParamField body="(root)" type="string" required>
+  The campaign ID to verify. This should be an ID that exists in the `token_mints` table.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates whether the request was successful.
+</ResponseField>
+
+<ResponseField name="data" type="string | null">
+  The verified campaign ID if found, or `null` if not found or error occurred.
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the request failed, or `false` if successful.
+</ResponseField>
+
+### Validation Process
+
+1. **Session Check**: Verifies the user has an active NextAuth session
+2. **Database Lookup**: Queries the `token_mints` table for the provided ID
+3. **Single Match**: Uses `.single()` to ensure exactly one match exists
+4. **ID Return**: Returns the validated campaign ID
+
+This endpoint uses Supabase's `.single()` method, which will error if:
+- No rows match the query
+- Multiple rows match the query (should not happen with ID lookups)
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/fetch-qr-id \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=your-session-token" \
+  -d '"550e8400-e29b-41d4-a716-446655440000"'
+```
+
+### Example Response
+
+**Success**
+```json
+{
+  "success": true,
+  "data": "550e8400-e29b-41d4-a716-446655440000",
+  "error": false
+}
+```
+
+### Error Responses
+
+**Unauthorized (No Session)**
+```json
+{
+  "success": false,
+  "error": "You are logged out",
+  "data": null
+}
+```
+
+**Campaign Not Found**
+```json
+{
+  "success": false,
+  "error": "No rows found",
+  "data": null
+}
+```
+
+**Database Error**
+```json
+{
+  "success": false,
+  "error": "Database connection failed",
+  "data": null
+}
+```
+
+### Use Cases
+
+- **Pre-validation**: Verify a campaign exists before creating QR codes
+- **Campaign Verification**: Confirm campaign ID validity in the UI
+- **Error Prevention**: Check campaign existence to provide better error messages
+- **ID Validation**: Ensure campaign IDs are properly formatted and exist in the database

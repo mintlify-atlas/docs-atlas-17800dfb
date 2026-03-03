@@ -1,0 +1,99 @@
+---
+title: "Get Campaigns"
+description: "Retrieve all campaigns created by the authenticated user"
+---
+
+## GET /api/get-all-campaigns
+
+Retrieves a list of all token campaigns created by the currently authenticated user.
+
+### Authentication
+
+Requires an active session via NextAuth. Returns an authorization error if the user is not logged in.
+
+### Request
+
+No request body or query parameters required. Authentication is handled via session.
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the request was successful
+</ResponseField>
+
+<ResponseField name="error" type="string | boolean">
+  Error message if the operation failed, or `false` on success
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of campaign objects. Empty array if no campaigns exist or on error.
+</ResponseField>
+
+#### Campaign Object
+
+<ResponseField name="id" type="number">
+  Unique campaign identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Campaign/token name
+</ResponseField>
+
+<ResponseField name="tokenSymbol" type="string">
+  Token symbol
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X GET https://your-domain.com/api/get-all-campaigns \
+  -H "Cookie: next-auth.session-token=your-session-token"
+```
+
+### Example Response (Success)
+
+```json
+{
+  "success": true,
+  "error": false,
+  "data": [
+    {
+      "id": 1,
+      "name": "My Campaign Token",
+      "tokenSymbol": "MCT"
+    },
+    {
+      "id": 2,
+      "name": "Rewards Token",
+      "tokenSymbol": "RWT"
+    }
+  ]
+}
+```
+
+### Example Response (Unauthorized)
+
+```json
+{
+  "success": false,
+  "error": "You are not authorized to this. Please log in",
+  "data": []
+}
+```
+
+### Example Response (Database Error)
+
+```json
+{
+  "success": false,
+  "error": "Database connection failed",
+  "data": []
+}
+```
+
+### Implementation Details
+
+- Queries the `token_mints` table filtered by the authenticated user's email
+- Returns only `id`, `name`, and `symbol` fields
+- Always returns an array in the `data` field (empty on error)
+- Maps database `symbol` field to `tokenSymbol` in response

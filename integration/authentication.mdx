@@ -1,0 +1,193 @@
+---
+title: "Authentication"
+description: "Learn how to configure Google OAuth authentication with NextAuth in Stampchain"
+---
+
+## Overview
+
+Stampchain uses **NextAuth.js** for authentication with Google OAuth as the primary authentication provider. This allows users to sign in securely using their Google accounts.
+
+## Configuration
+
+### NextAuth Setup
+
+The authentication configuration is located at `src/lib/auth.ts` and defines the core authentication options:
+
+```typescript
+import NextAuth, { AuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+
+export const authOptions: AuthOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+    })
+  ]
+}
+
+export default NextAuth(authOptions)
+```
+
+### API Route Handler
+
+The NextAuth API route is configured at `src/app/api/auth/[...nextauth]/route.ts`:
+
+```typescript
+import NextAuth from "next-auth"
+import GoogleProvider from "next-auth/providers/google";
+
+const handler = NextAuth({
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+    })
+  ],
+  pages: {
+    signIn: "/login"
+  }
+})
+
+export { handler as GET, handler as POST }
+```
+
+## Environment Variables
+
+You need to configure the following environment variables in your `.env.local` file:
+
+```bash
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_nextauth_secret
+```
+
+<Note>
+To obtain Google OAuth credentials, create a project in the [Google Cloud Console](https://console.cloud.google.com/) and configure OAuth 2.0 credentials.
+</Note>
+
+## Session Management
+
+### Server-Side Session Access
+
+Use `getServerSession()` to access the current user session in API routes and server components:
+
+```typescript
+import { getServerSession } from "next-auth"
+
+export const GET = async () => {
+  const session = await getServerSession();
+  
+  if (!session) {
+    return NextResponse.json({
+      success: false,
+      error: 'You have to log in to use this service',
+      data: null
+    })
+  }
+
+  const email = session.user?.email as string;
+  // Use email to query user data
+}
+```
+
+### Protected API Routes
+
+All API routes that require authentication follow this pattern:
+
+1. Call `getServerSession()` to retrieve the current session
+2. Check if the session exists
+3. Return an error if the session is null
+4. Extract the user's email from `session.user?.email`
+5. Use the email to query or update user-specific data
+
+**Example from `/api/get-wallet/route.ts`:**
+
+```typescript
+export const GET = async () => {
+  const session = await getServerSession();
+  if (!session) {
+    return NextResponse.json({
+      success: false,
+      error: 'You have to log in to use this service',
+      data: null
+    })
+  }
+
+  const email = session.user?.email as string;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('users')
+    .select('server_wallet')
+    .eq('email', email)
+    .maybeSingle()
+
+  // Handle response...
+}
+```
+
+## Custom Sign-In Page
+
+The authentication configuration specifies a custom sign-in page at `/login`:
+
+```typescript
+pages: {
+  signIn: "/login"
+}
+```
+
+This allows you to create a branded login experience while leveraging NextAuth's authentication flow.
+
+## User Account Creation
+
+When a user signs in for the first time, the `/api/create-account` endpoint creates their account and generates a server-side Solana wallet:
+
+```typescript
+export const POST = async (req: NextRequest) => {
+  const body = await req.json() as requestType;
+  const email = body.email;
+  const supabase = createClient();
+
+  // Check if user exists
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .single()
+
+  if (existingUser) {
+    return NextResponse.json({success: true, url: '/admin'})
+  }
+
+  // Generate server wallet for new user
+  const mintAuthority = Keypair.generate();
+  const server_wallet = mintAuthority.publicKey.toString();
+  const server_key = mintAuthority.secretKey;
+
+  // Create user record
+  const { error: insertError } = await supabase
+    .from('users')
+    .insert([{ email, server_wallet, server_key }])
+    .select()
+    .single()
+
+  // Handle response...
+}
+```
+
+<Warning>
+The user's email address is used as the primary identifier throughout the system. Ensure that email addresses are properly validated and unique.
+</Warning>
+
+## Security Considerations
+
+- **Secret Key Storage**: Server-side wallet secret keys are stored in the database. Ensure proper encryption and access controls are in place.
+- **Session Configuration**: NextAuth handles session tokens automatically using secure HTTP-only cookies.
+- **Environment Variables**: Never commit `.env.local` files to version control.
+- **HTTPS in Production**: Always use HTTPS in production to protect authentication tokens.
+
+## Next Steps
+
+- [Wallet Setup](/integration/wallet-setup) - Learn how server wallets are generated and managed
+- [Database Schema](/integration/database-schema) - Understand the database structure including the users table

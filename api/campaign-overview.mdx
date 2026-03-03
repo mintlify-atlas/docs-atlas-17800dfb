@@ -1,0 +1,92 @@
+---
+title: "Campaign Overview"
+description: "Get 30-day activity overview and claim statistics for a specific campaign"
+---
+
+## POST /api/overview
+
+Retrieves the last 30 days of claim activity for a specific campaign, providing daily claim counts.
+
+### Authentication
+
+Requires an active session via NextAuth. Returns `Unauthorized` if the user is not logged in.
+
+### Request Body
+
+<ParamField body="id" type="number" required>
+  Campaign ID to fetch overview data for
+</ParamField>
+
+### Response
+
+Returns an array of daily claim statistics for the last 30 days.
+
+#### Daily Claim Object
+
+<ResponseField name="day" type="string">
+  Formatted date string (e.g., "Jan 15", "Feb 3")
+</ResponseField>
+
+<ResponseField name="claims" type="number">
+  Number of claims made on that day
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/overview \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=your-session-token" \
+  -d '{
+    "id": 123
+  }'
+```
+
+### Example Response (Success)
+
+```json
+[
+  {
+    "day": "Feb 1",
+    "claims": 5
+  },
+  {
+    "day": "Feb 2",
+    "claims": 12
+  },
+  {
+    "day": "Feb 3",
+    "claims": 8
+  },
+  {
+    "day": "Feb 4",
+    "claims": 0
+  }
+]
+```
+
+### Example Response (Unauthorized)
+
+```json
+{
+  "res": "Unauthorized"
+}
+```
+
+### Example Response (Error)
+
+```json
+{
+  "error": "Failed to fetch activity"
+}
+```
+
+### Implementation Details
+
+- Queries the `qr_codes` table for claims in the last 30 days
+- Filters by `campaign_id` and `claimed_at` timestamp
+- Only counts QR codes where `used` is `true` and `claimed_at` is not null
+- Returns exactly 30 data points (one per day, 0 claims if no activity)
+- Days are formatted using `en-US` locale (e.g., "Jan 1", "Dec 31")
+- Data is sorted chronologically from 29 days ago to today
+- Useful for displaying claim trends and campaign performance charts
