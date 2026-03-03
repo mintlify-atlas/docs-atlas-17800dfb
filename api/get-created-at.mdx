@@ -1,0 +1,103 @@
+---
+title: "Get Campaign Creation Date"
+description: "Retrieve formatted creation date and claim settings for a campaign"
+---
+
+## POST /api/get/created-at
+
+Retrieves the formatted creation date, tokens per claim, and maximum claims per wallet for a specific campaign.
+
+### Authentication
+
+Requires an active session via NextAuth. Only returns data for campaigns owned by the authenticated user.
+
+### Request Body
+
+<ParamField body="id" type="string" required>
+  The campaign ID (token mint ID from the database)
+</ParamField>
+
+### Response
+
+<ResponseField name="created_at" type="string">
+  Formatted creation date in "Month Day" format (e.g., "January 15")
+</ResponseField>
+
+<ResponseField name="tokenperclaim" type="number">
+  Number of tokens distributed per claim
+</ResponseField>
+
+<ResponseField name="maxClaim" type="number">
+  Maximum number of claims allowed per wallet
+</ResponseField>
+
+### Success Response
+
+```json
+{
+  "created_at": "March 3",
+  "tokenperclaim": 10,
+  "maxClaim": 5
+}
+```
+
+### Error Responses
+
+**Unauthorized**
+```json
+{
+  "res": "Unauthorized"
+}
+```
+
+**Campaign Not Found / Database Error**
+```json
+{
+  "res": "Error fetching created_at"
+}
+```
+
+## Implementation Details
+
+This endpoint:
+1. Validates the user session
+2. Queries the `token_mints` table filtering by campaign ID and creator email
+3. Retrieves `created_at`, `tokensperclaim`, and `maxclaimsperwallet` fields
+4. Formats the creation date using US locale formatting (month name + day)
+5. Returns the formatted data
+
+### Date Formatting
+
+The `created_at` timestamp is formatted using:
+```typescript
+date.toLocaleDateString("en-US", {
+  month: "long",
+  day: "numeric",
+})
+```
+
+This produces dates like "January 15", "March 3", etc.
+
+## Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/get/created-at \
+  -H "Content-Type: application/json" \
+  -H "Cookie: your-session-cookie" \
+  -d '{
+    "id": "42"
+  }'
+```
+
+## Use Cases
+
+This endpoint is typically used in:
+- Campaign detail pages to display when the campaign was created
+- Analytics dashboards showing campaign age
+- Admin interfaces displaying campaign metadata
+
+## Security
+
+- Only returns campaigns where `creator_email` matches the authenticated user's email
+- Unauthorized requests receive an immediate error response
+- Database errors are caught and return a generic error message

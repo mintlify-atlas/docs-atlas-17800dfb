@@ -74,8 +74,10 @@
             "group": "Campaign Management",
             "pages": [
               "api/create-campaign",
+              "api/create-campaign-continue",
               "api/get-campaigns",
-              "api/campaign-overview"
+              "api/campaign-overview",
+              "api/get-created-at"
             ]
           },
           {

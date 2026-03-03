@@ -1,0 +1,114 @@
+---
+title: "Continue Campaign Creation"
+description: "Submit signed transaction to complete campaign creation on Solana"
+---
+
+## POST /api/create-campaign/continue
+
+Completes the campaign creation process by submitting a signed transaction to the Solana blockchain and storing the campaign details in the database.
+
+### Authentication
+
+Requires an active session via NextAuth. Returns an error if the user is not authenticated.
+
+### Request Body
+
+<ParamField body="signedTx" type="string" required>
+  Base64-encoded signed Solana transaction
+</ParamField>
+
+<ParamField body="mintPublicKey" type="string" required>
+  The public key of the token mint (base58 encoded)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Indicates whether the operation was successful
+</ResponseField>
+
+<ResponseField name="txid" type="string">
+  The transaction signature (transaction ID)
+</ResponseField>
+
+<ResponseField name="explorer" type="string">
+  URL to view the transaction on Solana Explorer
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Redirect URL to the campaign success page (e.g., `/admin/campaign/success?id=123`)
+</ResponseField>
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "txid": "5j7s3...",
+  "explorer": "https://explorer.solana.com/tx/5j7s3...?cluster=devnet",
+  "url": "/admin/campaign/success?id=42"
+}
+```
+
+### Error Responses
+
+**Unauthorized**
+```json
+{
+  "success": false,
+  "message": "You have to be active"
+}
+```
+
+**Validation Error**
+```json
+{
+  "success": false,
+  "message": "Validation error details"
+}
+```
+
+**Database Error**
+```json
+{
+  "success": false,
+  "message": "Database error message"
+}
+```
+
+**Transaction Error**
+```json
+{
+  "err": "Transaction error message",
+  "success": false
+}
+```
+
+## Implementation Details
+
+This endpoint:
+1. Validates the signed transaction and mint public key from the request
+2. Deserializes the transaction from base64 format
+3. Sends the raw transaction to Solana devnet
+4. Confirms the transaction
+5. Retrieves the campaign ID from the database using the mint address
+6. Returns the transaction signature and redirect URL
+
+## Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/create-campaign/continue \
+  -H "Content-Type: application/json" \
+  -H "Cookie: your-session-cookie" \
+  -d '{
+    "signedTx": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQABAgMEBQYHCAkK...",
+    "mintPublicKey": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
+  }'
+```
+
+## Notes
+
+- This endpoint is typically called after the initial campaign creation returns a serialized transaction
+- The transaction must be signed client-side before submission
+- The endpoint operates on Solana devnet
+- Failed transactions will return detailed error messages
