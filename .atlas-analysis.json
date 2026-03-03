@@ -1,0 +1,123 @@
+{
+  "projectType": "saas",
+  "projectName": "Stampchain",
+  "projectDescription": "Blockchain-powered loyalty-as-a-service platform for creating tokenized reward campaigns with QR code distribution on Solana",
+  "theme": "mint",
+  "primaryColor": "#6366f1",
+  "lightColor": "#818cf8",
+  "darkColor": "#4f46e5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "features"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/campaigns",
+              "concepts/tokens",
+              "concepts/qr-codes",
+              "concepts/wallet-integration"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/creating-campaigns",
+              "guides/generating-qr-codes",
+              "guides/claiming-rewards",
+              "guides/admin-dashboard",
+              "guides/analytics"
+            ]
+          },
+          {
+            "group": "Integration",
+            "pages": [
+              "integration/authentication",
+              "integration/wallet-setup",
+              "integration/database-schema"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Campaign Management",
+            "pages": [
+              "api/create-campaign",
+              "api/get-campaigns",
+              "api/campaign-overview"
+            ]
+          },
+          {
+            "group": "Token Claims",
+            "pages": [
+              "api/claim-token",
+              "api/claim-to-wallet",
+              "api/fetch-claim-details"
+            ]
+          },
+          {
+            "group": "QR Codes",
+            "pages": [
+              "api/create-qr-codes",
+              "api/load-qr-codes",
+              "api/fetch-qr-id"
+            ]
+          },
+          {
+            "group": "User Management",
+            "pages": [
+              "api/create-account",
+              "api/get-wallet",
+              "api/get-users"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Custom Solana SPL Token creation with metadata",
+    "QR code generation and management for campaigns",
+    "Multi-wallet support (Phantom, WalletConnect)",
+    "Admin dashboard with real-time analytics",
+    "Campaign management with expiry and claim limits",
+    "Fraud prevention with one-time use QR codes",
+    "Google OAuth authentication",
+    "Supabase database integration"
+  ],
+  "publicApiSurface": [
+    "POST /api/create-campaign",
+    "POST /api/create-campaign/continue",
+    "POST /api/claim",
+    "POST /api/claim/to-wallet",
+    "POST /api/create-qr-codes",
+    "POST /api/load-qr-codes",
+    "GET /api/get-all-campaigns",
+    "POST /api/fetch-claim-qr-details",
+    "POST /api/fetch-qr-id",
+    "GET /api/overview",
+    "POST /api/create-account",
+    "GET /api/get-wallet",
+    "GET /api/getUsers",
+    "GET /api/get/created-at"
+  ]
+}
